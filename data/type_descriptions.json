@@ -1,0 +1,82 @@
+{
+  "HNMW": {
+    "name": "The Opening Weekender",
+    "tagline": "First in line, every time.",
+    "body": "Across {{ratedCount}} movies, you show up for the big new releases and rate them like everyone else does — mostly. Your signature pick was {{signatureMovie}}, which you rated {{signatureDirection}} the crowd. Favorites like {{topMovies}} show a taste that spreads wide across {{topGenre}} and beyond, rather than digging into one lane."
+  },
+  "HNMF": {
+    "name": "The Franchise Regular",
+    "tagline": "You know exactly what you're getting, and that's the point.",
+    "body": "Across {{ratedCount}} movies, you keep coming back to {{topGenre}} — new releases, big names, no surprises needed. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} round out a taste that isn't looking for range, it's looking for more of what already works."
+  },
+  "HNUW": {
+    "name": "The Trend Scout",
+    "tagline": "You're not late to anything.",
+    "body": "Across {{ratedCount}} movies, you chase what's new without sticking to one lane — but you skip whatever's topping the charts. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} suggest you'd rather find the next thing than watch the thing everyone's already found."
+  },
+  "HNUF": {
+    "name": "The Deep Cut Hunter",
+    "tagline": "If it's trending, you've probably already moved on.",
+    "body": "Across {{ratedCount}} movies, you stay locked on {{topGenre}} — but always the newest, least-talked-about entries in it. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} read less like a watchlist and more like a specialist's beat."
+  },
+  "HOMW": {
+    "name": "The Canon Completist",
+    "tagline": "You're building the whole library, not just a shelf.",
+    "body": "Across {{ratedCount}} movies, you work through decades of acclaimed, widely-loved films across every genre. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} look like homework nobody assigned you — you just wanted to have actually seen it."
+  },
+  "HOMF": {
+    "name": "The Golden Age Devotee",
+    "tagline": "They don't make them like they used to, and you'd know.",
+    "body": "Across {{ratedCount}} movies, you keep circling back to {{topGenre}} from decades past — the acknowledged classics, not the deep cuts. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} suggest a taste that was formed by a specific era and never really left it."
+  },
+  "HOUW": {
+    "name": "The Archive Digger",
+    "tagline": "Every era has its forgotten gems, and you've found most of them.",
+    "body": "Across {{ratedCount}} movies, you range wide across genres and decades, consistently landing on titles nobody else remembers. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} look like the output of someone who treats old catalogs as a place to explore, not a chore."
+  },
+  "HOUF": {
+    "name": "The Cult Classicist",
+    "tagline": "Your favorites have a very specific, very small fanbase — and you're in it.",
+    "body": "Across {{ratedCount}} movies, you're deep into older {{topGenre}} that never broke through, and you're not looking for it to now. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} suggest a taste built around a lane most people never even knew existed."
+  },
+  "LNMW": {
+    "name": "The Weekend Sampler",
+    "tagline": "You show up for the big ones, then move on with your life.",
+    "body": "Across {{ratedCount}} movies, you keep it light — recent, well-liked, and spread across whatever's on. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} aren't a project, just a reasonable way to spend a Friday."
+  },
+  "LNMF": {
+    "name": "The Casual Fan",
+    "tagline": "You've got one lane, and you're happy in it.",
+    "body": "Across {{ratedCount}} movies, you check in on {{topGenre}} when something new shows up, without going looking for anything else. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} suggest a taste that's settled, not indifferent."
+  },
+  "LNUW": {
+    "name": "The Selective Scout",
+    "tagline": "You don't watch much, but what you watch, nobody else has heard of.",
+    "body": "Across {{ratedCount}} movies, you're choosy — recent, under-the-radar, and spread across genres rather than locked into one. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} look like the result of real curation, not volume."
+  },
+  "LNUF": {
+    "name": "The Niche Specialist",
+    "tagline": "Small pool, but you know it better than anyone.",
+    "body": "Across {{ratedCount}} movies, you stay narrowly focused on newer {{topGenre}} that most people have never encountered. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} suggest you'd rather go deep on one specific thing than wide on everything."
+  },
+  "LOMW": {
+    "name": "The Classic Sampler",
+    "tagline": "You dip into the canon when the mood strikes.",
+    "body": "Across {{ratedCount}} movies, you pick up well-regarded older films here and there, without committing to any one genre. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} read like an occasional visitor to film history, not a resident."
+  },
+  "LOMF": {
+    "name": "The Comfort Rewatcher",
+    "tagline": "You know what you love, and you don't need anything new.",
+    "body": "Across {{ratedCount}} movies, you return to the same well-loved corner of {{topGenre}} from years past. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} aren't about discovery — they're about a taste you settled into a long time ago."
+  },
+  "LOUW": {
+    "name": "The Quiet Collector",
+    "tagline": "You've got a handful of favorites nobody else has stumbled onto.",
+    "body": "Across {{ratedCount}} movies, you rarely watch, but when you do, it's an overlooked older title from wherever the genre takes you. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd. {{topMovies}} suggest a small, deliberately-built taste rather than a wide net."
+  },
+  "LOUF": {
+    "name": "The Cult Archivist",
+    "tagline": "You found it before it was cool.",
+    "body": "Across {{ratedCount}} movies, you keep circling back to older, under-the-radar titles nobody's talking about. Your signature pick was {{signatureMovie}}, rated {{signatureDirection}} the crowd — a tell that reputation means little to you. {{topMovies}} anchor a taste that's narrowed hard on {{topGenre}}."
+  }
+}

@@ -1,0 +1,652 @@
+[
+  {
+    "tmdbId": 27205,
+    "title": "Inception",
+    "year": 2010,
+    "posterPath": "/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg",
+    "genres": [
+      "Action",
+      "Science Fiction",
+      "Adventure"
+    ],
+    "voteCount": 39544,
+    "voteAverage": 8.4,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 496243,
+    "title": "Parasite",
+    "year": 2019,
+    "posterPath": "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
+    "genres": [
+      "Comedy",
+      "Thriller",
+      "Drama"
+    ],
+    "voteCount": 20862,
+    "voteAverage": 8.5,
+    "originalLanguage": "ko"
+  },
+  {
+    "tmdbId": 13,
+    "title": "Forrest Gump",
+    "year": 1994,
+    "posterPath": "/Cw4hIUIAmSYfK9QfaUW5igp9La.jpg",
+    "genres": [
+      "Comedy",
+      "Drama",
+      "Romance"
+    ],
+    "voteCount": 29965,
+    "voteAverage": 8.5,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 372058,
+    "title": "Your Name.",
+    "year": 2016,
+    "posterPath": "/q719jXXEzOoYaps6babgKnONONX.jpg",
+    "genres": [
+      "Animation",
+      "Romance",
+      "Drama"
+    ],
+    "voteCount": 12688,
+    "voteAverage": 8.5,
+    "originalLanguage": "ja"
+  },
+  {
+    "tmdbId": 244786,
+    "title": "Whiplash",
+    "year": 2014,
+    "posterPath": "/7fn624j5lj3xTme2SgiLCeuedmO.jpg",
+    "genres": [
+      "Drama",
+      "Music",
+      "Thriller"
+    ],
+    "voteCount": 16779,
+    "voteAverage": 8.4,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 419430,
+    "title": "Get Out",
+    "year": 2017,
+    "posterPath": "/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg",
+    "genres": [
+      "Mystery",
+      "Thriller",
+      "Horror"
+    ],
+    "voteCount": 19025,
+    "voteAverage": 7.6,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 475557,
+    "title": "Joker",
+    "year": 2019,
+    "posterPath": "/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg",
+    "genres": [
+      "Crime",
+      "Thriller",
+      "Drama"
+    ],
+    "voteCount": 27906,
+    "voteAverage": 8.1,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 424,
+    "title": "Schindler's List",
+    "year": 1993,
+    "posterPath": "/sF1U4EUQS8YHUYjNl3pMGNIQyr0.jpg",
+    "genres": [
+      "Drama",
+      "History",
+      "War"
+    ],
+    "voteCount": 17598,
+    "voteAverage": 8.6,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 120,
+    "title": "The Lord of the Rings: The Fellowship of the Ring",
+    "year": 2001,
+    "posterPath": "/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg",
+    "genres": [
+      "Adventure",
+      "Fantasy",
+      "Action"
+    ],
+    "voteCount": 27840,
+    "voteAverage": 8.4,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 429,
+    "title": "The Good, the Bad and the Ugly",
+    "year": 1966,
+    "posterPath": "/bX2xnavhMYjWDoZp1VM6VnU1xwe.jpg",
+    "genres": [
+      "Western"
+    ],
+    "voteCount": 9748,
+    "voteAverage": 8.5,
+    "originalLanguage": "it"
+  },
+  {
+    "tmdbId": 597,
+    "title": "Titanic",
+    "year": 1997,
+    "posterPath": "/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg",
+    "genres": [
+      "Drama",
+      "Romance"
+    ],
+    "voteCount": 27344,
+    "voteAverage": 7.9,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 389,
+    "title": "12 Angry Men",
+    "year": 1957,
+    "posterPath": "/zhG3vKWyDRaZYoaww1UVAi29T9h.jpg",
+    "genres": [
+      "Drama"
+    ],
+    "voteCount": 10114,
+    "voteAverage": 8.6,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 194,
+    "title": "Amélie",
+    "year": 2001,
+    "posterPath": "/nSxDa3M9aMvGVLoItzWTepQ5h5d.jpg",
+    "genres": [
+      "Comedy",
+      "Romance"
+    ],
+    "voteCount": 12474,
+    "voteAverage": 7.9,
+    "originalLanguage": "fr"
+  },
+  {
+    "tmdbId": 7345,
+    "title": "There Will Be Blood",
+    "year": 2007,
+    "posterPath": "/fa0RDkAlCec0STeMNAhPaF89q6U.jpg",
+    "genres": [
+      "Drama"
+    ],
+    "voteCount": 7529,
+    "voteAverage": 8.1,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 398818,
+    "title": "Call Me by Your Name",
+    "year": 2017,
+    "posterPath": "/mZ4gBdfkhP9tvLH1DO4m4HYtiyi.jpg",
+    "genres": [
+      "Romance",
+      "Drama"
+    ],
+    "voteCount": 12802,
+    "voteAverage": 8.1,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 33,
+    "title": "Unforgiven",
+    "year": 1992,
+    "posterPath": "/54roTwbX9fltg85zjsmrooXAs12.jpg",
+    "genres": [
+      "Western"
+    ],
+    "voteCount": 5002,
+    "voteAverage": 7.9,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 438631,
+    "title": "Dune",
+    "year": 2021,
+    "posterPath": "/gDzOcq0pfeCeqMBwKIJlSmQpjkZ.jpg",
+    "genres": [
+      "Science Fiction",
+      "Adventure",
+      "War"
+    ],
+    "voteCount": 15102,
+    "voteAverage": 7.8,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 666277,
+    "title": "Past Lives",
+    "year": 2023,
+    "posterPath": "/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg",
+    "genres": [
+      "Drama",
+      "Romance"
+    ],
+    "voteCount": 2360,
+    "voteAverage": 7.7,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 1900,
+    "title": "Traffic",
+    "year": 2000,
+    "posterPath": "/jbccmnqE4oAPI67bApgt2JiRPz8.jpg",
+    "genres": [
+      "Thriller",
+      "Drama",
+      "Crime"
+    ],
+    "voteCount": 2445,
+    "voteAverage": 7.1,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 85350,
+    "title": "Boyhood",
+    "year": 2014,
+    "posterPath": "/2BvtvDUyxiMJ4dmKfiQf4qdOHQN.jpg",
+    "genres": [
+      "Drama"
+    ],
+    "voteCount": 5545,
+    "voteAverage": 7.5,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 744,
+    "title": "Top Gun",
+    "year": 1986,
+    "posterPath": "/xUuHj3CgmZQ9P2cMaqQs4J0d4Zc.jpg",
+    "genres": [
+      "Action",
+      "Drama",
+      "Romance"
+    ],
+    "voteCount": 9674,
+    "voteAverage": 7.1,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 792,
+    "title": "Platoon",
+    "year": 1986,
+    "posterPath": "/m3mmFkPQKvPZq5exmh0bDuXlD9T.jpg",
+    "genres": [
+      "Drama",
+      "War",
+      "Action"
+    ],
+    "voteCount": 5158,
+    "voteAverage": 7.7,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 120467,
+    "title": "The Grand Budapest Hotel",
+    "year": 2014,
+    "posterPath": "/zOVCqKUzjFKqa1eDMcOzvXwthY4.jpg",
+    "genres": [
+      "Comedy",
+      "Drama"
+    ],
+    "voteCount": 16213,
+    "voteAverage": 8.0,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 149870,
+    "title": "The Wind Rises",
+    "year": 2013,
+    "posterPath": "/jfwSexzlIzaOgxP9A8bTA6t8YYb.jpg",
+    "genres": [
+      "Animation",
+      "Drama",
+      "History",
+      "Romance"
+    ],
+    "voteCount": 3403,
+    "voteAverage": 7.8,
+    "originalLanguage": "ja"
+  },
+  {
+    "tmdbId": 299534,
+    "title": "Avengers: Endgame",
+    "year": 2019,
+    "posterPath": "/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg",
+    "genres": [
+      "Adventure",
+      "Science Fiction",
+      "Action"
+    ],
+    "voteCount": 28020,
+    "voteAverage": 8.2,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 240,
+    "title": "The Godfather Part II",
+    "year": 1974,
+    "posterPath": "/hek3koDUyRQk7FIhPXsa6mT2Zc3.jpg",
+    "genres": [
+      "Drama",
+      "Crime"
+    ],
+    "voteCount": 14044,
+    "voteAverage": 8.6,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 62,
+    "title": "2001: A Space Odyssey",
+    "year": 1968,
+    "posterPath": "/ve72VxNqjGM69Uky4WTo2bK6rfq.jpg",
+    "genres": [
+      "Science Fiction",
+      "Mystery",
+      "Adventure"
+    ],
+    "voteCount": 12703,
+    "voteAverage": 8.0,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 9552,
+    "title": "The Exorcist",
+    "year": 1973,
+    "posterPath": "/5x0CeVHJI8tcDx8tUUwYHQSNILq.jpg",
+    "genres": [
+      "Horror",
+      "Drama"
+    ],
+    "voteCount": 8711,
+    "voteAverage": 7.7,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 106646,
+    "title": "The Wolf of Wall Street",
+    "year": 2013,
+    "posterPath": "/kW9LmvYHAaS9iA0tHmZVq8hQYoq.jpg",
+    "genres": [
+      "Crime",
+      "Drama",
+      "Comedy"
+    ],
+    "voteCount": 26103,
+    "voteAverage": 8.0,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 37799,
+    "title": "The Social Network",
+    "year": 2010,
+    "posterPath": "/n0ybibhJtQ5icDqTp8eRytcIHJx.jpg",
+    "genres": [
+      "Drama"
+    ],
+    "voteCount": 13261,
+    "voteAverage": 7.4,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 97367,
+    "title": "The Place Beyond the Pines",
+    "year": 2013,
+    "posterPath": "/vY5j2xQzMGWmxBuhQo0HfA4Lxqb.jpg",
+    "genres": [
+      "Drama",
+      "Crime"
+    ],
+    "voteCount": 5238,
+    "voteAverage": 7.0,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 346,
+    "title": "Seven Samurai",
+    "year": 1954,
+    "posterPath": "/lOMGc8bnSwQhS4XyE1S99uH8NXf.jpg",
+    "genres": [
+      "Action",
+      "Drama"
+    ],
+    "voteCount": 4275,
+    "voteAverage": 8.4,
+    "originalLanguage": "ja"
+  },
+  {
+    "tmdbId": 391713,
+    "title": "Lady Bird",
+    "year": 2017,
+    "posterPath": "/gl66K7zRdtNYGrxyS2YDUP5ASZd.jpg",
+    "genres": [
+      "Drama",
+      "Comedy"
+    ],
+    "voteCount": 9066,
+    "voteAverage": 7.3,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 376867,
+    "title": "Moonlight",
+    "year": 2016,
+    "posterPath": "/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg",
+    "genres": [
+      "Drama"
+    ],
+    "voteCount": 7571,
+    "voteAverage": 7.4,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 18329,
+    "title": "Happy Together",
+    "year": 1997,
+    "posterPath": "/kO4KjUkQOfWSBw06Bdl7m6AlEP7.jpg",
+    "genres": [
+      "Drama",
+      "Romance"
+    ],
+    "voteCount": 807,
+    "voteAverage": 7.6,
+    "originalLanguage": "cn"
+  },
+  {
+    "tmdbId": 539,
+    "title": "Psycho",
+    "year": 1960,
+    "posterPath": "/yz4QVqPx3h1hD1DfqqQkCq3rmxW.jpg",
+    "genres": [
+      "Horror",
+      "Thriller",
+      "Mystery"
+    ],
+    "voteCount": 11065,
+    "voteAverage": 8.4,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 19,
+    "title": "Metropolis",
+    "year": 1927,
+    "posterPath": "/kr9wXRN23zLuWJIelahas1mtnYj.jpg",
+    "genres": [
+      "Drama",
+      "Science Fiction"
+    ],
+    "voteCount": 3125,
+    "voteAverage": 8.1,
+    "originalLanguage": "de"
+  },
+  {
+    "tmdbId": 15,
+    "title": "Citizen Kane",
+    "year": 1941,
+    "posterPath": "/sav0jxhqiH0bPr2vZFU0Kjt2nZL.jpg",
+    "genres": [
+      "Mystery",
+      "Drama"
+    ],
+    "voteCount": 6105,
+    "voteAverage": 8.0,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 490,
+    "title": "The Seventh Seal",
+    "year": 1957,
+    "posterPath": "/wcZ21zrOsy0b52AfAF50XpTiv75.jpg",
+    "genres": [
+      "Fantasy",
+      "Drama"
+    ],
+    "voteCount": 3379,
+    "voteAverage": 8.1,
+    "originalLanguage": "sv"
+  },
+  {
+    "tmdbId": 146,
+    "title": "Crouching Tiger, Hidden Dragon",
+    "year": 2000,
+    "posterPath": "/iNDVBFNz4XyYzM9Lwip6atSTFqf.jpg",
+    "genres": [
+      "Adventure",
+      "Drama",
+      "Action",
+      "Romance"
+    ],
+    "voteCount": 3606,
+    "voteAverage": 7.4,
+    "originalLanguage": "zh"
+  },
+  {
+    "tmdbId": 60243,
+    "title": "A Separation",
+    "year": 2011,
+    "posterPath": "/xQadpnoLokxzN3hRpCPbBGpxsiz.jpg",
+    "genres": [
+      "Drama"
+    ],
+    "voteCount": 1970,
+    "voteAverage": 7.9,
+    "originalLanguage": "fa"
+  },
+  {
+    "tmdbId": 582,
+    "title": "The Lives of Others",
+    "year": 2006,
+    "posterPath": "/cVUDMnskSc01rdbyH0tLATTJUdP.jpg",
+    "genres": [
+      "Drama",
+      "Thriller"
+    ],
+    "voteCount": 4158,
+    "voteAverage": 8.0,
+    "originalLanguage": "de"
+  },
+  {
+    "tmdbId": 426426,
+    "title": "Roma",
+    "year": 2018,
+    "posterPath": "/dtIIyQyALk57ko5bjac7hi01YQ.jpg",
+    "genres": [
+      "Drama"
+    ],
+    "voteCount": 4136,
+    "voteAverage": 7.6,
+    "originalLanguage": "es"
+  },
+  {
+    "tmdbId": 579974,
+    "title": "RRR",
+    "year": 2022,
+    "posterPath": "/u0XUBNQWlOvrh0Gd97ARGpIkL0.jpg",
+    "genres": [
+      "Action",
+      "History",
+      "Drama"
+    ],
+    "voteCount": 1628,
+    "voteAverage": 7.7,
+    "originalLanguage": "te"
+  },
+  {
+    "tmdbId": 545611,
+    "title": "Everything Everywhere All at Once",
+    "year": 2022,
+    "posterPath": "/u68AjlvlutfEIcpmbYpKcdi09ut.jpg",
+    "genres": [
+      "Action",
+      "Adventure",
+      "Science Fiction"
+    ],
+    "voteCount": 8114,
+    "voteAverage": 7.7,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 627,
+    "title": "Trainspotting",
+    "year": 1996,
+    "posterPath": "/1jUC02qsqS2NxBMFarbIhcQtazV.jpg",
+    "genres": [
+      "Drama",
+      "Crime"
+    ],
+    "voteCount": 10464,
+    "voteAverage": 8.0,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 264660,
+    "title": "Ex Machina",
+    "year": 2015,
+    "posterPath": "/dmJW8IAKHKxFNiUnoDR7JfsK7Rp.jpg",
+    "genres": [
+      "Drama",
+      "Science Fiction"
+    ],
+    "voteCount": 14361,
+    "voteAverage": 7.6,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 581734,
+    "title": "Nomadland",
+    "year": 2021,
+    "posterPath": "/8Vc5EOUEIF1EUXuX9eLFf7BvN3P.jpg",
+    "genres": [
+      "Drama"
+    ],
+    "voteCount": 3396,
+    "voteAverage": 7.2,
+    "originalLanguage": "en"
+  },
+  {
+    "tmdbId": 359940,
+    "title": "Three Billboards Outside Ebbing, Missouri",
+    "year": 2017,
+    "posterPath": "/bRYLt8fV82tdVoDppSFTZIcJiLN.jpg",
+    "genres": [
+      "Crime",
+      "Drama"
+    ],
+    "voteCount": 10986,
+    "voteAverage": 8.1,
+    "originalLanguage": "en"
+  }
+]

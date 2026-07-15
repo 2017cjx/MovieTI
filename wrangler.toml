@@ -1,0 +1,8 @@
+name = "movieti"
+compatibility_date = "2026-07-14"
+pages_build_output_dir = "dist"
+
+# Workers AI binding, used by functions/api/_lib/agents.ts for all 3 LLM
+# agents (docs/adr/0005 — Workers AI only, no Anthropic).
+[ai]
+binding = "AI"

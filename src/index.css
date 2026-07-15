@@ -1,0 +1,114 @@
+:root {
+  /* Dark-mode-first palette, warm orange -> red accent (no purple). */
+  --text: #c9beb4;
+  --text-h: #fff8f2;
+  --bg: #130e0b;
+  --bg-elevated: #1d1512;
+  --border: #3a2a20;
+  --code-bg: #1f1611;
+  --accent: #f97316;
+  --accent-2: #ef4444;
+  --accent-gradient: linear-gradient(135deg, #f97316, #ef4444);
+  --accent-bg: rgba(249, 115, 22, 0.12);
+  --accent-border: rgba(249, 115, 22, 0.45);
+  --social-bg: rgba(29, 21, 18, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.5) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  /* Unitless line-height: a %/px value here would compute to an absolute
+     length on :root and get inherited as-is, clipping any descendant whose
+     font-size is larger than :root's (e.g. h1). Unitless is recomputed per
+     element instead. */
+  font: 18px/1.45 var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#social .button-icon {
+  filter: invert(1) brightness(2);
+}
+
+/* Mobile-first: the app is designed for a phone-width column first. On
+   wider viewports it stays capped at phone width and centers, rather than
+   stretching into a desktop layout — this is a swipeable quiz card app,
+   not a document site, so there's no wide-screen layout to grow into. */
+#root {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom);
+  box-sizing: border-box;
+}
+
+@media (min-width: 431px) {
+  #root {
+    box-shadow: var(--shadow);
+  }
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  margin: 32px 0;
+  background: var(--accent-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+}
+h2 {
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  margin: 0 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 20px;
+  }
+}
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
