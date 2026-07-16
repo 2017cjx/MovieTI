@@ -53,9 +53,11 @@ export async function runLlmTask<TAgent, TFallback = TAgent>(
       if (result.ok) {
         return { source: "agent", data: result.data };
       }
-      // Invalid output — loop around and retry (if attempts remain).
-    } catch {
-      // Network/timeout/provider error — loop around and retry.
+      // Temporary diagnostic (2026-07-16) for the E2E-validation fallback-
+      // rate investigation — was previously silently discarded.
+      console.warn(`[llm-task] attempt ${attempt} validation failed: ${result.reason}; raw: ${raw.slice(0, 500)}`);
+    } catch (err) {
+      console.warn(`[llm-task] attempt ${attempt} threw: ${(err as Error).message}`);
     }
   }
   return { source: "fallback", data: await opts.fallback() };
