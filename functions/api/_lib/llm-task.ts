@@ -53,9 +53,13 @@ export async function runLlmTask<TAgent, TFallback = TAgent>(
       if (result.ok) {
         return { source: "agent", data: result.data };
       }
-      // Temporary diagnostic (2026-07-16) for the E2E-validation fallback-
-      // rate investigation — was previously silently discarded.
-      console.warn(`[llm-task] attempt ${attempt} validation failed: ${result.reason}; raw: ${raw.slice(0, 500)}`);
+      // Error visibility (2026-07-16) — was previously silently discarded,
+      // which made the E2E-validation fallback-rate investigation
+      // impossible to diagnose from live logs. Kept as permanent, low-noise
+      // operational visibility (not removed after that investigation) since
+      // any future fallback-rate regression will need the same signal;
+      // preview trimmed to keep each log line short.
+      console.warn(`[llm-task] attempt ${attempt} validation failed: ${result.reason}; raw: ${raw.slice(0, 150)}`);
     } catch (err) {
       console.warn(`[llm-task] attempt ${attempt} threw: ${(err as Error).message}`);
     }

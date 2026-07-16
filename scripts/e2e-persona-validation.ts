@@ -20,6 +20,7 @@
  */
 
 import { computeScores, SCORING_CONSTANTS } from "../src/scoring.ts";
+import type { Answer } from "../src/types/answer.ts";
 import { writeFileSync, mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(
@@ -123,12 +124,6 @@ async function postJson(path: string, body: unknown) {
   }
 }
 
-interface Answer {
-  movie: { tmdbId: number; title: string; year: number; genres: string[]; voteCount: number; voteAverage: number; originalLanguage: string };
-  seen: boolean;
-  rating?: number;
-}
-
 function toRatedMovie(a: Answer & { rating: number }) {
   return {
     title: a.movie.title,
@@ -158,7 +153,7 @@ async function runPersona(typeCode: string, seed: number) {
   while (answers.length < 80) {
     const nextQuestionNumber = answers.length + 1;
     const phase = nextQuestionNumber <= 20 ? "screening" : "deep_dive";
-    const { axisScores } = computeScores(answers as never);
+    const { axisScores } = computeScores(answers);
     const ratedMoviesSoFar = answers
       .filter((a): a is Answer & { rating: number } => a.seen && a.rating !== undefined)
       .map(toRatedMovie);
@@ -204,7 +199,7 @@ async function runPersona(typeCode: string, seed: number) {
     shownMovieIds = [...shownMovieIds, ...data.batch.map((m) => m.tmdbId)];
   }
 
-  const result = computeScores(answers as never, { final: true });
+  const result = computeScores(answers, { final: true });
 
   let flourishOk: boolean | null = null;
   if (!SKIP_FLOURISH) {
@@ -218,7 +213,10 @@ async function runPersona(typeCode: string, seed: number) {
         axisScores: result.axisScores,
         topRatedMovies,
         signatureMovie: result.signatureMovie
-          ? { ...toRatedMovie({ ...result.signatureMovie, seen: true } as never), deviation: result.signatureMovie.deviation }
+          ? {
+              ...toRatedMovie({ movie: result.signatureMovie.movie, seen: true, rating: result.signatureMovie.rating }),
+              deviation: result.signatureMovie.deviation,
+            }
           : topRatedMovies[0],
       })) as { status: string; comment: string | null };
       flourishOk = flourishRes.status === "ok" && !!flourishRes.comment;
