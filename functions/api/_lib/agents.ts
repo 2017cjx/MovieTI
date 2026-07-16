@@ -12,29 +12,33 @@ export interface Env {
   AI: Ai;
 }
 
-// Bumped from llama-3.2-3b-instruct 2026-07-16 — that model doesn't support
-// Workers AI JSON Mode at all, and was part of the ~19% deep-dive fallback
-// rate found via E2E validation
-// (docs/validation-runs/2026-07-16T06-05-23-667Z-e2e.md). Went through 2
-// wrong turns before landing here, both confirmed live via wrangler pages
-// deployment tail rather than assumed:
+// 2026-07-16: tried bumping both agents off llama-3.2-3b-instruct to fix
+// their share of the ~19% deep-dive fallback rate found via E2E validation
+// (docs/validation-runs/2026-07-16T06-05-23-667Z-e2e.md). 3 things tried,
+// all confirmed live via wrangler pages deployment tail rather than
+// assumed, all reverted:
 //   1. llama-3.1-8b-instruct-fp8 + response_format — rejected every call
 //      with `5025: This model doesn't support JSON Schema`, despite the
 //      model catalog's schema listing response_format as an accepted
 //      field for it.
 //   2. llama-3.3-70b-instruct-fp8-fast + response_format — DOES support
-//      JSON Mode, but was too slow for this latency-sensitive path: even
-//      after parallelizing the question-agent and hypothesis-agent calls,
-//      both routinely hit the 8s per-attempt timeout outright (wallTime
-//      16000 = 2 failed attempts), and successful calls still took
-//      13-29s end to end. A quiz built around instant-feeling taps can't
-//      eat that.
-// Settled on 8B *without* response_format — no hard schema enforcement,
-// but a meaningfully better zero-shot JSON-follower than the original 3B
-// while staying fast. Reliability now rests on validateQuestionAgentOutput
-// + the existing retry budget, same as before this whole detour.
-const QUESTION_AGENT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
-const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+//      JSON Mode, but was far too slow for this latency-sensitive path:
+//      even after parallelizing the question-agent and hypothesis-agent
+//      calls, both routinely hit the 8s per-attempt timeout outright
+//      (wallTime 16000 = 2 failed attempts back to back), and successful
+//      calls still took 13-29s end to end.
+//   3. llama-3.1-8b-instruct-fp8 *without* response_format, hoping the
+//      extra size alone would improve zero-shot JSON-following while
+//      staying fast — it didn't stay fast. 8B is ~2.7x 3B's parameters,
+//      and that alone was enough to push generation time up against the
+//      same 8s timeout on Workers AI, independent of response_format.
+//      Every model size tried that's big enough to follow JSON reliably
+//      has been too slow for a quiz built around instant-feeling taps;
+//      only the original 3B stayed comfortably fast. Reliability is worth
+//      revisiting later (prompt tightening, more retry budget on the fast
+//      model) but not at the cost of a demo that visibly hangs.
+const QUESTION_AGENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
+const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
 // Bigger model — the only one of the 3 agents whose output is user-facing
 // prose, where quality (not just structured-output reliability) matters
 // (docs/adr/0005).
