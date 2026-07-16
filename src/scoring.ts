@@ -244,9 +244,21 @@ export function computeScores(
     }
     return true;
   }
+  // Guard added 2026-07-16 after a full 16-persona E2E sweep with the
+  // leaning-matched baseline alone: it did remove the systematic
+  // false-Focused bias (confirmed via scripts/genre-width-diagnostic.ts),
+  // but genreWidth's average |score| across the sweep collapsed from 0.44
+  // to 0.06 — a small matched subset is itself a noisy topGenreShare
+  // estimate, so the fix traded "confidently wrong in one direction" for
+  // "often close to a coin-flip." Reusing MIN_SAMPLES_FOR_CONFIDENCE (the
+  // same sample size already treated as "enough" everywhere else in this
+  // file) as the threshold below which the matched subset is too small to
+  // trust as its own baseline, rather than inventing a second magic number.
   const leaningMatchedSeen = seen.filter(matchesLeaning);
   const seenTopGenreShare = topGenreShareOf(
-    leaningMatchedSeen.length > 0 ? leaningMatchedSeen : seen,
+    leaningMatchedSeen.length >= SCORING_CONSTANTS.MIN_SAMPLES_FOR_CONFIDENCE
+      ? leaningMatchedSeen
+      : seen,
   );
   // Positive delta = favorites concentrate more than the exposure baseline
   // (real Focus signal); zero/negative = favorites are as spread out as
