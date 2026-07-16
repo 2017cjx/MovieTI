@@ -20,12 +20,29 @@ export interface DiscoverParams {
 }
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
-/** Metadata-quality guardrail (docs/adr/0001). */
-const MIN_VOTE_COUNT_GUARDRAIL = 500;
+/** Recognizability guardrail (docs/adr/0001; raised 2026-07-15 from 500 —
+ *  500 let genuinely obscure titles through, which user testing found
+ *  "not fun" to rate blind. 2000 keeps the "underground" end of the
+ *  mainstream axis at indie/arthouse-recognizable rather than unknown. */
+const MIN_VOTE_COUNT_GUARDRAIL = 2000;
 /** No real TMDb movie has vote_count anywhere near this; clamps
  *  LLM-hallucinated values (observed in testing: e.g. 1,000,000) that
  *  would otherwise make TMDb return zero results. */
 const MAX_PLAUSIBLE_VOTE_COUNT = 50000;
+/** Default ceiling applied only when the agent didn't set vote_count.lte
+ *  itself AND isn't deliberately reaching for a maximal-popularity title
+ *  (sort_by popularity.desc — the one case prompts/question-agent.md
+ *  documents as an intentional blockbuster-extreme test for the mainstream
+ *  axis). Otherwise, an agent call that just omits vote_count.lte would
+ *  silently be free to surface mega-franchise hits every time. Added
+ *  2026-07-15 alongside the recognizability floor above. */
+const DEFAULT_VOTE_COUNT_CEILING = 20000;
+/** TMDb company IDs for Disney/Marvel/Pixar/Lucasfilm — user feedback
+ *  2026-07-15: these franchises were dominating batches and crowding out
+ *  everything else. Hard-excluded via `without_companies` regardless of
+ *  what the agent requests, rather than relying on prompt instructions,
+ *  since prompt guidance can be inconsistently followed by the LLM. */
+const EXCLUDED_COMPANY_IDS = [2, 3, 1, 420, 6125, 7505];
 
 function sanitizeParams(params: DiscoverParams): DiscoverParams {
   const clean: DiscoverParams = { ...params };
@@ -34,6 +51,11 @@ function sanitizeParams(params: DiscoverParams): DiscoverParams {
     Math.max(voteCountGte, MIN_VOTE_COUNT_GUARDRAIL),
     MAX_PLAUSIBLE_VOTE_COUNT,
   );
+  if (clean["vote_count.lte"] === undefined && clean.sort_by !== "popularity.desc") {
+    if (clean["vote_count.gte"] < DEFAULT_VOTE_COUNT_CEILING) {
+      clean["vote_count.lte"] = DEFAULT_VOTE_COUNT_CEILING;
+    }
+  }
   if (clean["vote_count.lte"] !== undefined) {
     // Must stay >= vote_count.gte, or the range is impossible (0 results).
     clean["vote_count.lte"] = Math.max(clean["vote_count.lte"], clean["vote_count.gte"]);
@@ -126,6 +148,10 @@ function buildQuery(clean: DiscoverParams, page: number): URLSearchParams {
   if (clean.with_origin_country) {
     query.set("with_origin_country", clean.with_origin_country);
   }
+  // Always excluded, not agent-controlled (see EXCLUDED_COMPANY_IDS) — a
+  // prompt instruction can be inconsistently followed by the LLM, but a
+  // query param can't be.
+  query.set("without_companies", EXCLUDED_COMPANY_IDS.join("|"));
   // Default to quality (critical reception), not popularity — an agent
   // call that omits sort_by should not silently skew toward blockbusters.
   query.set("sort_by", clean.sort_by ?? "vote_average.desc");

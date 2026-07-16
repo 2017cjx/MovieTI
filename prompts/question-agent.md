@@ -123,10 +123,16 @@ the time you're called, there's always at least 20 real answers behind you.
   (ISO 3166-1, e.g. `"HK"`, `"JP"`, `"FR"`), `sort_by`.
 - Never invent a genre ID, language/country code, or malformed date. If
   unsure, omit the key.
-- Always include `vote_count.gte` of at least 500 (metadata-quality guardrail,
-  see `docs/adr/0001`).
+- Always include `vote_count.gte` of at least 2000 (recognizability guardrail,
+  see `docs/adr/0001`) — the backend clamps anything lower up to this floor
+  anyway, so a value below it just wastes your own signal.
 - Always include `language=en-US` is handled by the backend automatically — do
   not add it yourself.
+- Disney, Marvel, Pixar, and Lucasfilm titles are excluded automatically by
+  the backend (`without_companies`) regardless of what you request — don't
+  reach for them for a "mainstream" test, since they won't come back anyway.
+  Plenty of other franchises still work for that signal (e.g. Fast &
+  Furious, Mission: Impossible, DC, Jurassic Park/World, Transformers).
 - Vary the conditions slightly each call so movies in `shown_movie_ids` aren't
   likely to reappear.
 - Reach for `sort_by: "popularity.desc"` only when the mainstream axis itself
@@ -166,7 +172,7 @@ Output:
   "reasoning": "Genre width has the lowest confidence. Try a title with an unambiguous single genre",
   "discover_params": {
     "with_genres": [27],
-    "vote_count.gte": 800,
+    "vote_count.gte": 2000,
     "sort_by": "vote_count.desc"
   }
 }
@@ -224,7 +230,7 @@ Output:
   "reasoning": "Genre width can be tested just as well with non-English cinema, and language_coverage shows we've barely left English-language titles — pick a well-regarded, moderately-sized Hong Kong release instead of another Hollywood genre pivot",
   "discover_params": {
     "with_origin_country": "HK",
-    "vote_count.gte": 500,
+    "vote_count.gte": 2000,
     "vote_count.lte": 5000,
     "vote_average.gte": 7.5,
     "sort_by": "vote_average.desc"

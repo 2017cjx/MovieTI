@@ -20,6 +20,24 @@ const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
 const RESULT_WRITER_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const AXIS_ORDER: AxisId[] = ["volume", "era", "mainstream", "genreWidth"];
 
+// Sampling params (2026-07-15) — none of the 3 agents set these before,
+// leaving Workers AI's defaults in effect. Left unchecked, the
+// question-agent in particular tended toward similar discover_params picks
+// across similar inputs (same root cause discussed for movie/genre
+// diversity elsewhere this session, just at the token-sampling level
+// instead of the TMDb-page-selection level).
+//
+// Moderate values for the 2 structured-JSON agents: enough temperature to
+// avoid always picking the single most likely option, but top_p=0.9 still
+// excludes the least-likely tail so JSON validity doesn't degrade further
+// (ADR 0005 already documents ~2/3 first-try JSON success without any
+// temperature bump; pushing this too high risks making that worse).
+const STRUCTURED_SAMPLING = { temperature: 0.8, top_p: 0.9 } as const;
+// Higher for the result-writer: free text, no format to break, and this is
+// the one agent whose entire job is a fresh, non-repetitive read on the
+// person — worth trading a little more randomness for less sameness.
+const PROSE_SAMPLING = { temperature: 0.95, top_p: 0.95 } as const;
+
 // prompts/question-agent.md documents its input/output axis keys in
 // snake_case (e.g. "genre_width") for prompt readability; src/api-types.ts
 // uses camelCase ("genreWidth") for the wire contract. This is the one
@@ -168,6 +186,7 @@ export async function runQuestionAgent(
           { role: "system", content: QUESTION_AGENT_PROMPT },
           { role: "user", content: userMessage },
         ],
+        ...STRUCTURED_SAMPLING,
       });
       const response = (res as { response: unknown }).response;
       return typeof response === "string" ? response : JSON.stringify(response);
@@ -261,6 +280,7 @@ export async function runHypothesisAgent(
           { role: "system", content: HYPOTHESIS_AGENT_PROMPT },
           { role: "user", content: userMessage },
         ],
+        ...STRUCTURED_SAMPLING,
       });
       const response = (res as { response: unknown }).response;
       return typeof response === "string" ? response : JSON.stringify(response);
@@ -412,6 +432,7 @@ export async function runResultWriter(
           { role: "system", content: RESULT_WRITER_PROMPT },
           { role: "user", content: userMessage },
         ],
+        ...PROSE_SAMPLING,
       });
       const response = (res as { response: unknown }).response;
       return typeof response === "string" ? response : JSON.stringify(response);
