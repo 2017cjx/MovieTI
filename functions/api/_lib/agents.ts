@@ -218,6 +218,12 @@ export async function runQuestionAgent(
     },
     validate: validateQuestionAgentOutput,
     fallback: () => undefined,
+    // 3 instead of the default 2 (2026-07-16, fallback-rate follow-up) —
+    // llama-3.2-3b-instruct calls measured ~1.1-1.3s each under normal
+    // (non-contended) load, so a 3rd attempt costs little, and most
+    // failures are near-instant validation rejections (bad JSON), not
+    // actual timeouts, so this doesn't meaningfully raise the worst case.
+    maxAttempts: 3,
   });
 
   return result.source === "agent" ? { source: "agent", data: result.data } : { source: "fallback" };
@@ -312,6 +318,7 @@ export async function runHypothesisAgent(
     },
     validate: validateHypothesisAgentOutput,
     fallback: () => undefined,
+    maxAttempts: 3, // same reasoning as the question-agent above
   });
 
   const plans = result.source === "agent" ? result.data.plans : {};
