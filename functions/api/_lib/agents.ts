@@ -15,17 +15,26 @@ export interface Env {
 // Bumped from llama-3.2-3b-instruct 2026-07-16 — that model doesn't support
 // Workers AI JSON Mode at all, and was part of the ~19% deep-dive fallback
 // rate found via E2E validation
-// (docs/validation-runs/2026-07-16T06-05-23-667Z-e2e.md). Tried
-// llama-3.1-8b-instruct-fp8 first (docs list "3.1/3.3 variants (8B, 70B)"
-// as JSON-Mode-capable) but Workers AI rejected every call with `5025: This
-// model doesn't support JSON Schema` — the model catalog's schema listing
-// response_format as an accepted field doesn't mean this specific
-// quantization actually implements it. Settled on the 70B model already
-// proven to work with response_format in this exact codebase (it's what
-// RESULT_WRITER_MODEL already was) rather than trial-and-error through
-// every other 3.1/3.3 variant name under a hackathon deadline.
-const QUESTION_AGENT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// (docs/validation-runs/2026-07-16T06-05-23-667Z-e2e.md). Went through 2
+// wrong turns before landing here, both confirmed live via wrangler pages
+// deployment tail rather than assumed:
+//   1. llama-3.1-8b-instruct-fp8 + response_format — rejected every call
+//      with `5025: This model doesn't support JSON Schema`, despite the
+//      model catalog's schema listing response_format as an accepted
+//      field for it.
+//   2. llama-3.3-70b-instruct-fp8-fast + response_format — DOES support
+//      JSON Mode, but was too slow for this latency-sensitive path: even
+//      after parallelizing the question-agent and hypothesis-agent calls,
+//      both routinely hit the 8s per-attempt timeout outright (wallTime
+//      16000 = 2 failed attempts), and successful calls still took
+//      13-29s end to end. A quiz built around instant-feeling taps can't
+//      eat that.
+// Settled on 8B *without* response_format — no hard schema enforcement,
+// but a meaningfully better zero-shot JSON-follower than the original 3B
+// while staying fast. Reliability now rests on validateQuestionAgentOutput
+// + the existing retry budget, same as before this whole detour.
+const QUESTION_AGENT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 // Bigger model — the only one of the 3 agents whose output is user-facing
 // prose, where quality (not just structured-output reliability) matters
 // (docs/adr/0005).
@@ -84,35 +93,6 @@ export interface QuestionAgentOutput {
   targetAxis: AxisId;
   discoverParams: DiscoverParams;
 }
-
-// Workers AI JSON Mode schema (2026-07-16) — mirrors validateQuestionAgentOutput
-// exactly, including additionalProperties:false on discover_params so the
-// model is structurally prevented from inventing a disallowed key, rather
-// than just being told not to in prose and validated after the fact.
-const QUESTION_AGENT_JSON_SCHEMA = {
-  type: "object",
-  properties: {
-    target_axis: { type: "string", enum: Object.keys(SNAKE_TO_AXIS_ID) },
-    reasoning: { type: "string" },
-    discover_params: {
-      type: "object",
-      properties: {
-        with_genres: { type: "array", items: { type: "number" } },
-        "primary_release_date.gte": { type: "string" },
-        "primary_release_date.lte": { type: "string" },
-        "vote_count.gte": { type: "number" },
-        "vote_count.lte": { type: "number" },
-        "vote_average.gte": { type: "number" },
-        "vote_average.lte": { type: "number" },
-        with_original_language: { type: "string" },
-        with_origin_country: { type: "string" },
-        sort_by: { type: "string" },
-      },
-      additionalProperties: false,
-    },
-  },
-  required: ["target_axis", "discover_params"],
-} as const;
 
 export type QuestionAgentResult =
   | { source: "agent"; data: QuestionAgentOutput }
@@ -228,7 +208,6 @@ export async function runQuestionAgent(
           { role: "user", content: userMessage },
         ],
         ...STRUCTURED_SAMPLING,
-        response_format: { type: "json_schema", json_schema: QUESTION_AGENT_JSON_SCHEMA },
       });
       const response = (res as { response: unknown }).response;
       return typeof response === "string" ? response : JSON.stringify(response);
@@ -248,26 +227,6 @@ interface HypothesisAgentOutput {
   plans: Partial<Record<AxisId, string>>;
   tasteHypothesis: string;
 }
-
-// Mirrors validateHypothesisAgentOutput: a `plan` string is required per
-// axis (score/confidence are left unconstrained, not forbidden — the prompt
-// has the model echo them too, and there's no benefit to fighting that).
-const AXIS_PLAN_SCHEMA = {
-  type: "object",
-  properties: { plan: { type: "string" } },
-  required: ["plan"],
-} as const;
-const HYPOTHESIS_AGENT_JSON_SCHEMA = {
-  type: "object",
-  properties: {
-    volume: AXIS_PLAN_SCHEMA,
-    era: AXIS_PLAN_SCHEMA,
-    mainstream: AXIS_PLAN_SCHEMA,
-    genre_width: AXIS_PLAN_SCHEMA,
-    taste_hypothesis: { type: "string" },
-  },
-  required: ["volume", "era", "mainstream", "genre_width", "taste_hypothesis"],
-} as const;
 
 /** Only the `plan` strings and `taste_hypothesis` — score/confidence are
  *  never trusted from the LLM's echo, even though the prompt instructs it
@@ -343,7 +302,6 @@ export async function runHypothesisAgent(
           { role: "user", content: userMessage },
         ],
         ...STRUCTURED_SAMPLING,
-        response_format: { type: "json_schema", json_schema: HYPOTHESIS_AGENT_JSON_SCHEMA },
       });
       const response = (res as { response: unknown }).response;
       return typeof response === "string" ? response : JSON.stringify(response);
