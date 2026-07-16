@@ -198,21 +198,56 @@ export function computeScores(
       : 0;
   }
   const topGenreShare = topGenreShareOf(highlyRatedSeen);
-  // Baseline: genre concentration across *everything seen*, not just what
-  // was highly rated. The question-selection agent deliberately serves a
-  // genre-diverse mix (axis rotation, anti-repetition — CONTEXT.md "質問選
-  // 定エージェント"), so `seen` is not a neutral sample of this person's
-  // taste; it's already artificially spread across genres by design. Using
-  // a fixed 50% cutoff on `topGenreShare` alone conflates "the exposure
-  // pool was diverse" with "this person's taste is wide" — a genuine genre
-  // specialist would still end up with a fairly spread `seen` set, since
-  // most of what they're shown isn't their preferred genre. Comparing
-  // favorites against *this person's own* exposure baseline cancels that
-  // out: only a favorites-set that concentrates *more* than what they were
-  // simply shown counts as real Focus signal. Found 2026-07-15 via live
-  // testing + user's own diagnosis ("まんべんなく出すから結局ワイドにな
-  // りやすいんじゃない？").
-  const seenTopGenreShare = topGenreShareOf(seen);
+  // Baseline: genre concentration across everything seen that matches this
+  // person's OWN era/mainstream leaning — not just any seen movie, and not
+  // just what was highly rated. The question-selection agent deliberately
+  // serves a genre-diverse mix (axis rotation, anti-repetition —
+  // CONTEXT.md "質問選定エージェント"), so plain `seen` is not a neutral
+  // sample of this person's taste; it's already artificially spread across
+  // genres by design. Using a fixed 50% cutoff on `topGenreShare` alone
+  // conflates "the exposure pool was diverse" with "this person's taste is
+  // wide" — a genuine genre specialist would still end up with a fairly
+  // spread `seen` set, since most of what they're shown isn't their
+  // preferred genre. Comparing favorites against *this person's own*
+  // exposure baseline cancels that out: only a favorites-set that
+  // concentrates *more* than what they were simply shown counts as real
+  // Focus signal. Found 2026-07-15 via live testing + user's own diagnosis
+  // ("まんべんなく出すから結局ワイドになりやすいんじゃない？").
+  //
+  // That plain-`seen` baseline still isn't a fair counterfactual on its
+  // own, though: era and mainstream aren't independent of genre in TMDb's
+  // actual catalog (e.g. the moderate-vote-count, well-reviewed band this
+  // app's own guardrails draw from — functions/api/_lib/tmdb.ts — skews
+  // toward anime and awards dramas). A genre-blind person whose ratings
+  // are driven purely by era/mainstream fit will still end up with a
+  // genre-concentrated highly-rated set purely as a byproduct of which
+  // *other*-axis-testing batches they happened to like — not a genre
+  // preference at all. Confirmed against real E2E data 2026-07-16
+  // (scripts/genre-width-diagnostic.ts): an HNUW (Wide-intended) persona's
+  // highly-rated set was ~47% Drama/Romance, but so was its full exposure
+  // pool's *era/mainstream-matching* subset — the plain-`seen` baseline
+  // missed this because it averages in movies the person's era/mainstream
+  // leaning would never have surfaced favorites from anyway. Restricting
+  // the baseline to only the seen movies that share the person's actual
+  // era/mainstream leaning makes it an apples-to-apples comparison; falls
+  // back to plain `seen` if that subset is empty (too little data to
+  // restrict on) or an axis has no signal yet (confidence 0 — don't filter
+  // on a leaning that isn't established).
+  function matchesLeaning(a: Answer): boolean {
+    if (eraScore.confidence > 0) {
+      const isRecent = currentYear - a.movie.year <= SCORING_CONSTANTS.ERA_RECENT_YEARS;
+      if ((eraScore.score >= 0) !== isRecent) return false;
+    }
+    if (mainstreamScore.confidence > 0) {
+      const isMajor = a.movie.voteCount >= SCORING_CONSTANTS.MAJOR_VOTE_COUNT_THRESHOLD;
+      if ((mainstreamScore.score >= 0) !== isMajor) return false;
+    }
+    return true;
+  }
+  const leaningMatchedSeen = seen.filter(matchesLeaning);
+  const seenTopGenreShare = topGenreShareOf(
+    leaningMatchedSeen.length > 0 ? leaningMatchedSeen : seen,
+  );
   // Positive delta = favorites concentrate more than the exposure baseline
   // (real Focus signal); zero/negative = favorites are as spread out as
   // what was simply shown (Wide, or no real preference detected).
