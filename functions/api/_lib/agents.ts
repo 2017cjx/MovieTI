@@ -13,16 +13,19 @@ export interface Env {
 }
 
 // Bumped from llama-3.2-3b-instruct 2026-07-16 — that model doesn't support
-// Workers AI JSON Mode at all (only 3.1/3.3 variants do, per Cloudflare's
-// docs), so response_format below silently couldn't be applied to it. The
-// 3B model's own reliability (ADR 0005's ~2/3 first-try JSON figure) was
-// also part of the ~19% deep-dive fallback rate found via E2E validation
-// (docs/validation-runs/2026-07-16T06-05-23-667Z-e2e.md). 8B is the
-// smallest JSON-Mode-capable size, chosen over 70B to keep latency down for
-// these 2 backend-only agents (unlike the result-writer, nothing here is
-// prose quality-sensitive — structured-output correctness is the only bar).
-const QUESTION_AGENT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
-const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+// Workers AI JSON Mode at all, and was part of the ~19% deep-dive fallback
+// rate found via E2E validation
+// (docs/validation-runs/2026-07-16T06-05-23-667Z-e2e.md). Tried
+// llama-3.1-8b-instruct-fp8 first (docs list "3.1/3.3 variants (8B, 70B)"
+// as JSON-Mode-capable) but Workers AI rejected every call with `5025: This
+// model doesn't support JSON Schema` — the model catalog's schema listing
+// response_format as an accepted field doesn't mean this specific
+// quantization actually implements it. Settled on the 70B model already
+// proven to work with response_format in this exact codebase (it's what
+// RESULT_WRITER_MODEL already was) rather than trial-and-error through
+// every other 3.1/3.3 variant name under a hackathon deadline.
+const QUESTION_AGENT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 // Bigger model — the only one of the 3 agents whose output is user-facing
 // prose, where quality (not just structured-output reliability) matters
 // (docs/adr/0005).
