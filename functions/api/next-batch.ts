@@ -116,6 +116,27 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const batchSize = body.batchSize ?? 5;
   const env = context.env;
 
+  // Kicked off before the question-agent/TMDb pipeline below rather than
+  // after, so the two run concurrently — they're fully independent (this
+  // only needs axisScores + notableAnswers already in the request body),
+  // and both now call the same 70B model (2026-07-16, JSON Mode fix).
+  // Running them sequentially measured ~22s per deep-dive batch, since
+  // isHypothesisCheckpoint is true on every batch at the current interval
+  // (HYPOTHESIS_AGENT_INTERVAL === batchSize) — too slow for the
+  // interactive quiz flow the prefetch buffer is built around.
+  const wantsCheckpoint = isHypothesisCheckpoint(
+    body.phase,
+    body.questionNumber,
+    batchSize,
+    body.plan !== undefined,
+  );
+  const hypothesisPromise = wantsCheckpoint
+    ? runHypothesisAgent(
+        { axisScores: body.axisScores, notableAnswers: pickNotableAnswers(body.ratedMoviesSoFar) },
+        env,
+      )
+    : null;
+
   let batch: QuestionMovie[] = [];
   let source: NextBatchResponse["source"];
   let targetAxis: NextBatchResponse["targetAxis"];
@@ -179,11 +200,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   const response: NextBatchResponse = { batch, source, targetAxis };
 
-  if (isHypothesisCheckpoint(body.phase, body.questionNumber, batchSize, body.plan !== undefined)) {
-    const { checkpoint, tasteHypothesis } = await runHypothesisAgent(
-      { axisScores: body.axisScores, notableAnswers: pickNotableAnswers(body.ratedMoviesSoFar) },
-      env,
-    );
+  if (hypothesisPromise) {
+    const { checkpoint, tasteHypothesis } = await hypothesisPromise;
     response.checkpoint = checkpoint;
     response.tasteHypothesis = tasteHypothesis;
   }
