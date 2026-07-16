@@ -12,8 +12,17 @@ export interface Env {
   AI: Ai;
 }
 
-const QUESTION_AGENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
-const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
+// Bumped from llama-3.2-3b-instruct 2026-07-16 — that model doesn't support
+// Workers AI JSON Mode at all (only 3.1/3.3 variants do, per Cloudflare's
+// docs), so response_format below silently couldn't be applied to it. The
+// 3B model's own reliability (ADR 0005's ~2/3 first-try JSON figure) was
+// also part of the ~19% deep-dive fallback rate found via E2E validation
+// (docs/validation-runs/2026-07-16T06-05-23-667Z-e2e.md). 8B is the
+// smallest JSON-Mode-capable size, chosen over 70B to keep latency down for
+// these 2 backend-only agents (unlike the result-writer, nothing here is
+// prose quality-sensitive — structured-output correctness is the only bar).
+const QUESTION_AGENT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 // Bigger model — the only one of the 3 agents whose output is user-facing
 // prose, where quality (not just structured-output reliability) matters
 // (docs/adr/0005).
@@ -72,6 +81,35 @@ export interface QuestionAgentOutput {
   targetAxis: AxisId;
   discoverParams: DiscoverParams;
 }
+
+// Workers AI JSON Mode schema (2026-07-16) — mirrors validateQuestionAgentOutput
+// exactly, including additionalProperties:false on discover_params so the
+// model is structurally prevented from inventing a disallowed key, rather
+// than just being told not to in prose and validated after the fact.
+const QUESTION_AGENT_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    target_axis: { type: "string", enum: Object.keys(SNAKE_TO_AXIS_ID) },
+    reasoning: { type: "string" },
+    discover_params: {
+      type: "object",
+      properties: {
+        with_genres: { type: "array", items: { type: "number" } },
+        "primary_release_date.gte": { type: "string" },
+        "primary_release_date.lte": { type: "string" },
+        "vote_count.gte": { type: "number" },
+        "vote_count.lte": { type: "number" },
+        "vote_average.gte": { type: "number" },
+        "vote_average.lte": { type: "number" },
+        with_original_language: { type: "string" },
+        with_origin_country: { type: "string" },
+        sort_by: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+  required: ["target_axis", "discover_params"],
+} as const;
 
 export type QuestionAgentResult =
   | { source: "agent"; data: QuestionAgentOutput }
@@ -187,6 +225,7 @@ export async function runQuestionAgent(
           { role: "user", content: userMessage },
         ],
         ...STRUCTURED_SAMPLING,
+        response_format: { type: "json_schema", json_schema: QUESTION_AGENT_JSON_SCHEMA },
       });
       const response = (res as { response: unknown }).response;
       return typeof response === "string" ? response : JSON.stringify(response);
@@ -206,6 +245,26 @@ interface HypothesisAgentOutput {
   plans: Partial<Record<AxisId, string>>;
   tasteHypothesis: string;
 }
+
+// Mirrors validateHypothesisAgentOutput: a `plan` string is required per
+// axis (score/confidence are left unconstrained, not forbidden — the prompt
+// has the model echo them too, and there's no benefit to fighting that).
+const AXIS_PLAN_SCHEMA = {
+  type: "object",
+  properties: { plan: { type: "string" } },
+  required: ["plan"],
+} as const;
+const HYPOTHESIS_AGENT_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    volume: AXIS_PLAN_SCHEMA,
+    era: AXIS_PLAN_SCHEMA,
+    mainstream: AXIS_PLAN_SCHEMA,
+    genre_width: AXIS_PLAN_SCHEMA,
+    taste_hypothesis: { type: "string" },
+  },
+  required: ["volume", "era", "mainstream", "genre_width", "taste_hypothesis"],
+} as const;
 
 /** Only the `plan` strings and `taste_hypothesis` — score/confidence are
  *  never trusted from the LLM's echo, even though the prompt instructs it
@@ -281,6 +340,7 @@ export async function runHypothesisAgent(
           { role: "user", content: userMessage },
         ],
         ...STRUCTURED_SAMPLING,
+        response_format: { type: "json_schema", json_schema: HYPOTHESIS_AGENT_JSON_SCHEMA },
       });
       const response = (res as { response: unknown }).response;
       return typeof response === "string" ? response : JSON.stringify(response);

@@ -60,6 +60,20 @@ export const SCORING_CONSTANTS = {
   HIGH_RATING_THRESHOLD: 4,
   /** Per-axis sample count at which confidence saturates to 1.0. */
   MIN_SAMPLES_FOR_CONFIDENCE: 8,
+  /** Below this many *seen* answers, era/mainstream/genreWidth fall back to
+   *  a neutral fixed value instead of a formula-computed score (SPEC.md
+   *  2節 edge case, never actually implemented until this constant).
+   *  Volume is unaffected — it's computed from the seen/answered ratio over
+   *  all 80 questions, so it never runs low on samples the way the other 3
+   *  (which only draw from *highly-rated seen* movies, a shrinking subset
+   *  of an already-small pool) can. Reuses MIN_SAMPLES_FOR_CONFIDENCE's
+   *  value rather than adding a second magic number. Added 2026-07-16: an
+   *  E2E validation run (docs/validation-runs/2026-07-16T06-05-23-667Z-e2e.md)
+   *  showed low-`seen`-count personas' era/genreWidth scores swinging to a
+   *  full ±1 off as few as 1-2 highly-rated movies — not a real signal,
+   *  just topGenreShareOf() being trivially ~100%-concentrated on a
+   *  1-movie sample. */
+  MIN_SEEN_FOR_SIGNAL: 8,
 } as const;
 
 export interface SignatureMovie {
@@ -72,6 +86,12 @@ export interface SignatureMovie {
 
 export interface ComputeScoresResult {
   axisScores: AxisScores;
+  /** True when `seen.length < SCORING_CONSTANTS.MIN_SEEN_FOR_SIGNAL` —
+   *  era/mainstream/genreWidth were forced to a neutral {score: 0,
+   *  confidence: 0} rather than computed, per SPEC.md 2節's low-signal edge
+   *  case. The result screen should show a "reference value only" caveat
+   *  when this is true. */
+  lowSignal: boolean;
   /** Only present when `final: true` and there's at least 1 answer. */
   typeCode?: string;
   /** Only present when `final: true` and at least 1 movie was seen+rated. */
@@ -202,15 +222,17 @@ export function computeScores(
     highlyRatedSeen.length,
   );
 
+  const lowSignal = seen.length < SCORING_CONSTANTS.MIN_SEEN_FOR_SIGNAL;
+  const neutral: AxisScore = { score: 0, confidence: 0 };
   const axisScores: AxisScores = {
     volume: volumeScore,
-    era: eraScore,
-    mainstream: mainstreamScore,
-    genreWidth: genreWidthScore,
+    era: lowSignal ? neutral : eraScore,
+    mainstream: lowSignal ? neutral : mainstreamScore,
+    genreWidth: lowSignal ? neutral : genreWidthScore,
   };
 
   if (!options?.final) {
-    return { axisScores };
+    return { axisScores, lowSignal };
   }
 
   const typeCode =
@@ -228,5 +250,5 @@ export function computeScores(
     }
   }
 
-  return { axisScores, typeCode, signatureMovie };
+  return { axisScores, lowSignal, typeCode, signatureMovie };
 }

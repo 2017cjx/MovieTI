@@ -131,6 +131,12 @@ export function ResultScreen({ answers }: { answers: Answer[] }) {
       <p className="type-badge">{typeCode}</p>
       <h1>{rendered.name}</h1>
       {rendered.tagline && <p className="tagline">{rendered.tagline}</p>}
+      {result.lowSignal && (
+        <p className="tagline">
+          You marked very few movies as seen, so this reads as a reference value rather than a
+          confident type.
+        </p>
+      )}
 
       <div className="axis-panel">
         {AXIS_ORDER.map((id) => {

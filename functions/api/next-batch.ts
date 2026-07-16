@@ -147,12 +147,24 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           body.shownMovieIds,
           batchSize,
         );
-        if (movies.length >= batchSize) agentBatch = movies;
-        // Fewer than requested (thin TMDb result set after filtering) —
-        // fall through to the fallback pool rather than serving a short batch.
-      } catch {
-        // TMDb request failed — fall through to the fallback pool.
+        if (movies.length >= batchSize) {
+          agentBatch = movies;
+        } else {
+          // Fewer than requested (thin TMDb result set after filtering) —
+          // fall through to the fallback pool rather than serving a short
+          // batch. Logged (2026-07-16, E2E validation follow-up) to tell
+          // this apart from an agent JSON failure — both show up as
+          // source: "fallback" to the client, but only this one implicates
+          // discover_params/tmdb.ts guardrails rather than the LLM.
+          console.warn(
+            `[next-batch] thin TMDb result: got ${movies.length}/${batchSize} for params ${JSON.stringify(agentResult.data.discoverParams)}`,
+          );
+        }
+      } catch (err) {
+        console.warn(`[next-batch] TMDb request threw: ${(err as Error).message}`);
       }
+    } else {
+      console.warn("[next-batch] question-agent JSON validation/timeout failed, using fallback pool");
     }
 
     if (agentBatch) {
