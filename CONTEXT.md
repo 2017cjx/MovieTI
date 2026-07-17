@@ -477,3 +477,122 @@ flourishテキストは無キャッシュで毎回再取得する既存パター
 踏襲するが、サイズを拡大しスマホ画面幅いっぱいに5枚を均等割り付けする
 （対抗案「タイトル・年表示つきのリッチカード」は、ユーザーが
 「サムネイルのみでいいが、大きく・画面幅に合わせて」と明確に述べたため不採用）。
+**表示グリッド（2026-07-17改訂）**: `.recommend-row`は`flex`ではなく
+`grid-template-columns: repeat(5, 1fr)`の固定5カラムグリッドにする。
+`flex`だと実際の件数（クロスリスト重複排除で4件になることがある）に応じて
+ポスター幅が伸縮し、2リスト間でサイズが揃わない問題が見つかったため
+（ユーザー指摘）。件数が5に満たない場合は空きカラムができるだけで、
+既存ポスターが引き伸ばされることはない。同じ理由で、favorites-row
+（お気に入り行）も専用の`.favorite-poster`スタイルをやめ、見出し
+「Movies you super liked」付きで`RecommendSection`コンポーネントを
+共用する形に統一した（2リストと同じ`RecommendSection`を使う分、
+サイズ不整合のバグ修正がここにも自動的に及んだ）。
+
+**flourishテキストのローディング表現（2026-07-17改訂）**: 当初は
+`flourishText ?? rendered.body`（静的テンプレートを仮表示→生成完了後に
+無言で差し替え）だったが、ユーザーから「ローディング中に静的テンプレ本文を
+見せず、スピナーだけにしてほしい」との指摘。`flourishText`が
+届く前（かつ`flourishFailed`でもない）は`.recommend-spinner`
+（2リストと同じスピナーCSS）を表示し、静的テンプレート本文は
+**失敗時のフォールバックとしてのみ**（「Try again」ボタンと併記）表示する形に
+変更。
+
+## Disney/Marvel/Pixar/Lucasfilmの扱い（2026-07-17、方針転換）
+当初（docs/adr/0001）は`without_companies`によるTMDb discoverクエリレベルの
+完全除外だったが、ユーザーから「厳しすぎる、たまに混ざるくらいで良い」との
+フィードバックを受け、**完全除外→上限つき許容**に変更。
+
+- **上限**: 結果画面の2リスト（あなたへのおすすめ／視野を広げる映画）は
+  それぞれ**5件中最大3件**まで許容（`FRANCHISE_CAP_PER_LIST`）。クイズ本体は
+  **セッション全体（80問）で最大3本**まで許容し、1バッチ（5問）あたり最大1本に
+  抑えて偏りなく分散させる（`FRANCHISE_SESSION_CAP`、
+  `functions/api/next-batch.ts`）。
+- **判定方法の制約**: TMDbの`discover`/`recommendations`系エンドポイントの
+  レスポンスには`production_companies`が含まれず、映画個別の詳細エンドポイント
+  （`/movie/{id}`）でしか判定できないと判明（実際のレスポンス形状を確認して
+  確定）。そのため候補を取得したあと、候補ごとに詳細取得を並列実行して
+  対象会社IDに該当するか判定し（`capFranchiseMovies`、
+  `functions/api/_lib/tmdb.ts`）、上限を超える分だけ弾く実装にした。
+  `discoverMovies`側は元々`without_companies`で完全除外していたが、これも
+  同じ「取得後に判定して上限で弾く」方式に統一（クエリパラメータでの
+  事前除外をやめた）。
+- **`QuestionMovie.isFranchise`（新設フィールド）**: 判定結果を画面に見せる
+  必要はないが、クイズのセッション全体での上限を数えるためにはどこかに
+  記録が要る。`QuestionMovie`型に`isFranchise?: boolean`を追加し、
+  `answers`配列（既存の回答履歴）から`franchiseShownCount`を都度
+  導出する（新規の永続化フィールドは増やしていない — 既存データの
+  導出値として計算、`useQuizState.ts`の`franchiseShownCount`）。
+  `data/fallback_pool.json`由来の映画にはこのフィールドが付かない
+  （静的JSONを遡って編集していない）が、`?? false`扱いで問題ない
+  （スクリーニングフェーズは元々上限管理の対象外）。
+
+## クイズ・おすすめ生成へのgrillingスキルからのアイデア借用（2026-07-17）
+ユーザーが「grill-me/grillingスキルの質問手法から借りられるアイデアはないか」
+と提案。3案のうち2つを実装（3つ目「仮説を診断中に見せて確認を取る」案は、
+「仮説は結果画面まで一切見せない」という既存の意図的な設計方針と衝突するため、
+別途ユーザー確認が必要として保留）。
+
+**1. 軸選定の依存関係ゲート（question-agent）**: `genreWidth`の集中度計算は
+`scoring.ts`で「本人のera/mainstreamの傾向に一致する`seen`映画」を
+ベースラインにしている（`leaningMatchedSeen`）ため、era・mainstreamに
+まだ実質的な確信度がない段階でgenreWidthを検証しても、ベースライン自体が
+ほぼランダムであまり意味がない。grillingの「依存関係を解決してから
+派生質問に進む」原則を借用し、era・mainstreamの確信度がいずれも0.3未満の
+間はgenreWidthを軸選定候補から除外するルールを追加。
+
+**2. 矛盾検知による割り込み質問（contradiction-triggered follow-up）**:
+grillingの「意外な回答が来たら即座にその場で深掘りする」原則を借用。
+最新の1問の回答が、すでに確信度0.5以上に達しているera/mainstreamの
+傾向と矛盾する場合（例: Underground傾向が強い人が超大作を高評価）、
+`src/lib/contradiction.ts`の`detectContradiction`がそれを検知し、
+次のバッチでその軸を強制的に狙わせる（`NextBatchRequest.contradiction`）。
+既存の「2〜3バッチに1回、taste_hypothesisをスケジュール的に検証する」
+仕組みとは別物で、こちらは意外な回答が実際に起きた瞬間に反応する。
+
+**信頼性上の教訓（2026-07-17、両方の実装で共通して発覚）**: 上記2つとも、
+当初は「なぜそのルールが必要か」をプロンプトで説明し、`llama-3.2-3b-instruct`
+自身に閾値比較や制約判定をさせる設計だった。実機テストで、モデルが
+`reasoning`欄では正しくルールを説明しながら、`target_axis`欄では
+ルールに反する値を出力する（説明と行動が矛盾する）事例が高頻度
+（5回中4回）で発生することが判明。同様に`recommend-horizon-agent`でも、
+存在しないジャンルIDの捏造（23, 34, 2など）や、平均評価4.0を
+「低評価」と誤判定する事例が見つかった。**対応方針を統一**: 判定基準を
+説明してモデル自身に比較させるのではなく、**判定済みの結果だけを
+渡し、モデルには「その中から選ぶ」だけをさせる**（`forced_target_axis`/
+`disallowed_axis`、`confirmed_low_affinity_genres`など）。加えて
+バックエンド側で`makeValidateQuestionAgentOutput`/
+`makeValidateRecommendHorizonOutput`が制約違反を検出したら
+`runLlmTask`の既存リトライ機構で再試行させ、違反したまま通さない
+（3B級の小型モデルでは「ルールを説明できる」ことと「ルールに従って
+出力できる」ことは別物、という前提で設計する）。
+
+## recommend-horizon-agentのジャンル/言語選定を「未検証」から「確認済み低評価」に限定（2026-07-17）
+ユーザー報告: 「視野を広げる映画」にゴジラ-1.0が出たが、そのジャンルは
+クイズ中に一度も聞かれていない（好きなことは知っているのに）。原因は
+`genre_coverage`が単なる出現回数タリーで、「一度も聞いていない」ジャンルと
+「聞いた上で低評価だった」ジャンルの区別がなかったこと——両方とも
+「カバレッジが薄い」という同じ見た目になり、エージェントがどちらも
+無差別に「視野を広げる候補」として扱ってしまっていた。
+
+対応: `genre_coverage`/`language_coverage`（出現回数のみ）を廃止し、
+`genreAffinity`/`languageAffinity`（`{seenCount, avgRating}`、
+実際に見て評価した作品からのみ集計）に置き換えた
+（`src/lib/recommendations.ts`の`pickTasteAffinity`、旧
+`pickCoverageTallies`）。「視野を広げる」対象は、**実際に見て
+低評価だった（`avgRating`が閾値以下、`seenCount`が2以上）ジャンル/言語のみ**
+とし、一度も出題されていないジャンル/言語は候補にしない（「未検証」と
+「確認済み低評価」を区別）。上記の信頼性上の教訓を踏まえ、この絞り込みと
+ジャンル名→TMDb ID変換もバックエンド側（`functions/api/recommend-horizon.ts`の
+`pickConfirmedLowAffinity`、`functions/api/_lib/tmdb.ts`の
+`getGenreNameToId`）で確定的に行い、エージェントには
+`confirmed_low_affinity_genres: [{name, id}]`という「選ぶだけでよい」
+形で渡す。
+
+**追加で発覚した問題（同日）**: ジャンル在庫（`vote_count.gte`2000以上）は
+ジャンルによって著しく偏る。Documentaryは2000以上の絞り込みで
+TMDb全体でも該当1本のみ（500以上なら83本）——実際にTMDbへ問い合わせて
+確認済み。クイズの質問選定では「見覚えのある作品で当ててもらう」という
+目的上2000の閾値が必要だが、視野を広げるリストは正解を当てる
+クイズではないため、同じ厳格さは不要と判断。`functions/api/recommend-horizon.ts`に
+段階的な緩和リトライ（言語/地域指定を落とす→`vote_count.gte`を500まで
+下げる）を追加（`HORIZON_RELAXED_VOTE_COUNT_FLOOR`）。

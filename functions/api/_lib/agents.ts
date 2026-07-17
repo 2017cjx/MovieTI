@@ -2,6 +2,7 @@ import type {
   AxisId,
   AxisScores,
   CheckpointPlan,
+  Contradiction,
   Phase,
   RatedMovie,
   RecommendSeed,
@@ -135,38 +136,62 @@ function stripCodeFence(text: string): string {
   return match ? match[1] : text;
 }
 
-function validateQuestionAgentOutput(raw: string): ValidationResult<QuestionAgentOutput> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripCodeFence(raw));
-  } catch {
-    return { ok: false, reason: "not valid JSON" };
-  }
-  if (typeof parsed !== "object" || parsed === null) {
-    return { ok: false, reason: "not a JSON object" };
-  }
-  const obj = parsed as Record<string, unknown>;
-
-  if (typeof obj.target_axis !== "string" || !(obj.target_axis in SNAKE_TO_AXIS_ID)) {
-    return { ok: false, reason: "missing/invalid target_axis" };
-  }
-  if (typeof obj.discover_params !== "object" || obj.discover_params === null) {
-    return { ok: false, reason: "missing discover_params" };
-  }
-  const params = obj.discover_params as Record<string, unknown>;
-  for (const key of Object.keys(params)) {
-    if (!ALLOWED_DISCOVER_KEYS.has(key)) {
-      return { ok: false, reason: `disallowed discover_params key: ${key}` };
+/** `requiredAxis`/`disallowedAxis` are decided deterministically by the
+ *  caller (next-batch.ts), not left to the model to reason about — a
+ *  prompt-only version of this ("here's a threshold, compare it yourself")
+ *  was tried first and measured unreliable: the model would sometimes
+ *  articulate the rule correctly in its own `reasoning` text and then
+ *  violate it in `target_axis` anyway (2026-07-17, live-tested). Rejecting
+ *  a violating response here and letting runLlmTask's existing retry loop
+ *  re-prompt is a real guarantee; the model no longer needs to know *why*
+ *  an axis is forced/disallowed, only that it is. */
+function makeValidateQuestionAgentOutput(constraints: {
+  requiredAxis?: AxisId;
+  disallowedAxis?: AxisId;
+}): (raw: string) => ValidationResult<QuestionAgentOutput> {
+  return (raw) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stripCodeFence(raw));
+    } catch {
+      return { ok: false, reason: "not valid JSON" };
     }
-  }
+    if (typeof parsed !== "object" || parsed === null) {
+      return { ok: false, reason: "not a JSON object" };
+    }
+    const obj = parsed as Record<string, unknown>;
 
-  return {
-    ok: true,
-    data: {
-      targetAxis: SNAKE_TO_AXIS_ID[obj.target_axis],
-      discoverParams: params as DiscoverParams,
-      reasoning: typeof obj.reasoning === "string" ? obj.reasoning : undefined,
-    },
+    if (typeof obj.target_axis !== "string" || !(obj.target_axis in SNAKE_TO_AXIS_ID)) {
+      return { ok: false, reason: "missing/invalid target_axis" };
+    }
+    const targetAxis = SNAKE_TO_AXIS_ID[obj.target_axis];
+    if (constraints.requiredAxis && targetAxis !== constraints.requiredAxis) {
+      return {
+        ok: false,
+        reason: `target_axis must be ${constraints.requiredAxis} (forced_target_axis), got ${targetAxis}`,
+      };
+    }
+    if (constraints.disallowedAxis && targetAxis === constraints.disallowedAxis) {
+      return { ok: false, reason: `target_axis ${targetAxis} is disallowed this batch` };
+    }
+    if (typeof obj.discover_params !== "object" || obj.discover_params === null) {
+      return { ok: false, reason: "missing discover_params" };
+    }
+    const params = obj.discover_params as Record<string, unknown>;
+    for (const key of Object.keys(params)) {
+      if (!ALLOWED_DISCOVER_KEYS.has(key)) {
+        return { ok: false, reason: `disallowed discover_params key: ${key}` };
+      }
+    }
+
+    return {
+      ok: true,
+      data: {
+        targetAxis,
+        discoverParams: params as DiscoverParams,
+        reasoning: typeof obj.reasoning === "string" ? obj.reasoning : undefined,
+      },
+    };
   };
 }
 
@@ -208,6 +233,15 @@ export async function runQuestionAgent(
     ratedMoviesSoFar: RatedMovie[];
     recentTargetAxes: AxisId[];
     tasteHypothesis?: string;
+    /** Deterministically decided by the caller (next-batch.ts) — see
+     *  makeValidateQuestionAgentOutput's doc comment for why this isn't
+     *  left to the model's own judgment. contradiction.axis becomes the
+     *  forced target axis; contradiction.movie becomes the model's
+     *  reference point for constructing discover_params. Mutually
+     *  exclusive with disallowedAxis in practice (next-batch.ts only ever
+     *  sets one), but not enforced here. */
+    contradiction?: Contradiction;
+    disallowedAxis?: AxisId;
   },
   env: Env,
 ): Promise<QuestionAgentResult> {
@@ -221,6 +255,9 @@ export async function runQuestionAgent(
     language_coverage: tallyLanguageCoverage(input.ratedMoviesSoFar),
     recent_target_axes: input.recentTargetAxes.map((id) => AXIS_ID_TO_SNAKE[id]),
     taste_hypothesis: input.tasteHypothesis,
+    forced_target_axis: input.contradiction && AXIS_ID_TO_SNAKE[input.contradiction.axis],
+    contradiction_movie: input.contradiction?.movie,
+    disallowed_axis: input.disallowedAxis && AXIS_ID_TO_SNAKE[input.disallowedAxis],
   });
 
   const result = await runLlmTask<QuestionAgentOutput, undefined>({
@@ -235,7 +272,10 @@ export async function runQuestionAgent(
       const response = (res as { response: unknown }).response;
       return typeof response === "string" ? response : JSON.stringify(response);
     },
-    validate: validateQuestionAgentOutput,
+    validate: makeValidateQuestionAgentOutput({
+      requiredAxis: input.contradiction?.axis,
+      disallowedAxis: input.disallowedAxis,
+    }),
     fallback: () => undefined,
     // 3 instead of the default 2 (2026-07-16, fallback-rate follow-up) —
     // llama-3.2-3b-instruct calls measured ~1.1-1.3s each under normal
@@ -620,51 +660,83 @@ export type RecommendHorizonAgentResult =
   | { source: "agent"; data: RecommendHorizonAgentOutput }
   | { source: "fallback" };
 
-/** Reuses the exact same discover_params validation shape as
- *  validateQuestionAgentOutput (same ALLOWED_DISCOVER_KEYS allowlist) — this
- *  agent has no target_axis field, since it deliberately targets multiple
- *  axes' opposite poles at once rather than one axis at a time. */
-function validateRecommendHorizonOutput(raw: string): ValidationResult<RecommendHorizonAgentOutput> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripCodeFence(raw));
-  } catch {
-    return { ok: false, reason: "not valid JSON" };
-  }
-  if (typeof parsed !== "object" || parsed === null) {
-    return { ok: false, reason: "not a JSON object" };
-  }
-  const obj = parsed as Record<string, unknown>;
-  if (typeof obj.discover_params !== "object" || obj.discover_params === null) {
-    return { ok: false, reason: "missing discover_params" };
-  }
-  const params = obj.discover_params as Record<string, unknown>;
-  for (const key of Object.keys(params)) {
-    if (!ALLOWED_DISCOVER_KEYS.has(key)) {
-      return { ok: false, reason: `disallowed discover_params key: ${key}` };
+/** Reuses the exact same discover_params key allowlist as
+ *  validateQuestionAgentOutput (ALLOWED_DISCOVER_KEYS) — this agent has no
+ *  target_axis field, since it deliberately targets multiple axes' opposite
+ *  poles at once rather than one axis at a time. Additionally validates
+ *  `with_genres` against `allowedGenreIds` (the exact ids offered in
+ *  `confirmed_low_affinity_genres`) — never trust an LLM-emitted genre id
+ *  at face value, same defensive posture as makeValidateRecommendSimilarOutput's
+ *  candidate-id check. Live-tested 2026-07-17: without this, the model
+ *  invented invalid genre ids (23, 34, 2 — none exist) a meaningful
+ *  fraction of the time. */
+function makeValidateRecommendHorizonOutput(
+  allowedGenreIds: number[],
+): (raw: string) => ValidationResult<RecommendHorizonAgentOutput> {
+  const allowed = new Set(allowedGenreIds);
+  return (raw) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stripCodeFence(raw));
+    } catch {
+      return { ok: false, reason: "not valid JSON" };
     }
-  }
-  return {
-    ok: true,
-    data: {
-      discoverParams: params as DiscoverParams,
-      reasoning: typeof obj.reasoning === "string" ? obj.reasoning : undefined,
-    },
+    if (typeof parsed !== "object" || parsed === null) {
+      return { ok: false, reason: "not a JSON object" };
+    }
+    const obj = parsed as Record<string, unknown>;
+    if (typeof obj.discover_params !== "object" || obj.discover_params === null) {
+      return { ok: false, reason: "missing discover_params" };
+    }
+    const params = obj.discover_params as Record<string, unknown>;
+    for (const key of Object.keys(params)) {
+      if (!ALLOWED_DISCOVER_KEYS.has(key)) {
+        return { ok: false, reason: `disallowed discover_params key: ${key}` };
+      }
+    }
+    if (params.with_genres !== undefined) {
+      if (
+        !Array.isArray(params.with_genres) ||
+        !params.with_genres.every((id) => typeof id === "number" && allowed.has(id))
+      ) {
+        return {
+          ok: false,
+          reason: `with_genres must only contain ids from confirmed_low_affinity_genres, got ${JSON.stringify(params.with_genres)}`,
+        };
+      }
+    }
+    return {
+      ok: true,
+      data: {
+        discoverParams: params as DiscoverParams,
+        reasoning: typeof obj.reasoning === "string" ? obj.reasoning : undefined,
+      },
+    };
   };
 }
 
 export async function runRecommendHorizonAgent(
   input: {
     axisScores: AxisScores;
-    genreCoverage: Record<string, number>;
-    languageCoverage: Record<string, number>;
+    /** Already filtered to a real, confirmed dispreference (avg rating at
+     *  or below a threshold, seen more than once) and resolved to their
+     *  numeric TMDb ids — computed deterministically by
+     *  functions/api/recommend-horizon.ts, not left to the agent to derive
+     *  from raw affinity numbers (same small-model reliability problem as
+     *  the genre-id hallucination this function's validator also guards
+     *  against — see makeValidateQuestionAgentOutput's doc comment in this
+     *  file for the same pattern applied to axis selection). */
+    confirmedLowAffinityGenres: Array<{ name: string; id: number }>;
+    /** Same filtering, but languages need no id resolution — they're
+     *  already ISO 639-1 codes, exactly what with_original_language wants. */
+    confirmedLowAffinityLanguages: string[];
   },
   env: Env,
 ): Promise<RecommendHorizonAgentResult> {
   const userMessage = JSON.stringify({
     axis_scores: toSnakeAxisScores(input.axisScores),
-    genre_coverage: input.genreCoverage,
-    language_coverage: input.languageCoverage,
+    confirmed_low_affinity_genres: input.confirmedLowAffinityGenres,
+    confirmed_low_affinity_languages: input.confirmedLowAffinityLanguages,
   });
 
   const result = await runLlmTask<RecommendHorizonAgentOutput, undefined>({
@@ -679,7 +751,7 @@ export async function runRecommendHorizonAgent(
       const response = (res as { response: unknown }).response;
       return typeof response === "string" ? response : JSON.stringify(response);
     },
-    validate: validateRecommendHorizonOutput,
+    validate: makeValidateRecommendHorizonOutput(input.confirmedLowAffinityGenres.map((g) => g.id)),
     fallback: () => undefined,
     maxAttempts: 3, // same reasoning as the question-agent above
   });

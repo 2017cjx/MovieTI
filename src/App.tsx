@@ -27,6 +27,8 @@ function App() {
       ratedMoviesSoFar: quiz.ratedMoviesSoFar,
       plan: quiz.checkpoint,
       tasteHypothesis: quiz.tasteHypothesis,
+      contradiction: quiz.latestContradiction,
+      franchiseShownCount: quiz.franchiseShownCount,
     }),
     onCheckpoint: quiz.setCheckpoint,
     onTasteHypothesis: quiz.setTasteHypothesis,

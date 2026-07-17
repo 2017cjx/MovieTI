@@ -68,6 +68,14 @@ export interface QuestionMovie {
   voteAverage: number;
   /** ISO 639-1, see RatedMovie.originalLanguage. */
   originalLanguage: string;
+  /** True iff produced by Disney/Marvel/Pixar/Lucasfilm (functions/api/_lib/tmdb.ts's
+   *  EXCLUDED_COMPANY_IDS). Optional/absent for movies from data/fallback_pool.json,
+   *  which predates this field and isn't annotated retroactively — treat
+   *  missing as false wherever counted. Added 2026-07-17: franchise
+   *  presence changed from a hard exclusion to a soft cap (see
+   *  capFranchiseMovies() in tmdb.ts), so the app needs to know which
+   *  shown/recommended movies counted against that cap. */
+  isFranchise?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +122,32 @@ export interface NextBatchRequest {
    *  don't capture "what kind of movies does this person actually like,"
    *  just coarse H/L-N/O-M/U-W/F buckets. Omit while phase === "screening". */
   tasteHypothesis?: string;
+  /** Present iff the single most recently rated movie contradicted an
+   *  already well-established era/mainstream lean (src/lib/contradiction.ts
+   *  computes this). A hint for the question-agent to prioritize probing
+   *  that specific surprise on this batch, mirroring the grilling skill's
+   *  "probe a surprising answer immediately" principle (2026-07-17,
+   *  user-requested) — rather than only reconciling contradictions on the
+   *  hypothesis-agent's fixed 5-question schedule. Omit while phase ===
+   *  "screening" (screening's fixed preset pool has no axis lean yet to
+   *  contradict). */
+  contradiction?: Contradiction;
+  /** How many Disney/Marvel/Pixar/Lucasfilm-produced movies (QuestionMovie.isFranchise)
+   *  have already been shown this session — the client sums this itself
+   *  from `answers`. The backend uses it to compute how much of the
+   *  session-wide cap of 3 remains (functions/api/next-batch.ts), admitting
+   *  at most 1 more per batch until the cap is used up. Optional (treated
+   *  as 0 if omitted) for the same deploy-skew safety as `batchSize` — a
+   *  client bundle briefly older than the backend it's talking to shouldn't
+   *  produce a hard failure. */
+  franchiseShownCount?: number;
+}
+
+/** Shared with src/lib/contradiction.ts (the client-side detector) — this
+ *  is the wire shape, defined once here rather than duplicated. */
+export interface Contradiction {
+  axis: "era" | "mainstream";
+  movie: { title: string; year: number; genres: string[]; voteCount: number };
 }
 
 export interface NextBatchResponse {
@@ -264,15 +298,30 @@ export interface RecommendSimilarResponse {
 // Called once, concurrently with /api/recommend-similar.
 // ---------------------------------------------------------------------------
 
+/** How much evidence exists for a genre/language and how it was rated on
+ *  average — deliberately NOT the same shape as
+ *  functions/api/_lib/agents.ts's tallyGenreCoverage (a plain appearance
+ *  count). A pure appearance count can't distinguish "never tested" from
+ *  "tested and disliked" — both look like a coverage gap — which let
+ *  recommend-horizon-agent.md target genres with zero real signal behind
+ *  them (2026-07-17, user feedback). Only genres/languages present in
+ *  RecommendHorizonRequest's affinity maps were actually seen+rated; a
+ *  genre missing from the map was simply never shown, not confirmed
+ *  disliked, and shouldn't be targeted as an "opposite of your taste" pick. */
+export interface TasteAffinity {
+  seenCount: number;
+  /** Average of the user's own 1-5 ratings across those movies. */
+  avgRating: number;
+}
+
 export interface RecommendHorizonRequest {
   axisScores: AxisScores;
-  /** Same shape as functions/api/_lib/agents.ts's tallyGenreCoverage output,
-   *  but computed client-side and weighted the same way as
-   *  RecommendSimilarRequest.candidateSeeds: deep-dive-phase answers
-   *  preferred, screening-phase folded back in only when there isn't
-   *  enough deep-dive data to tally from. */
-  genreCoverage: Record<string, number>;
-  languageCoverage: Record<string, number>;
+  /** Computed client-side (src/lib/recommendations.ts), weighted the same
+   *  way as RecommendSimilarRequest.candidateSeeds: deep-dive-phase answers
+   *  preferred, screening-phase folded back in only when there isn't enough
+   *  deep-dive data to tally from. */
+  genreAffinity: Record<string, TasteAffinity>;
+  languageAffinity: Record<string, TasteAffinity>;
   shownMovieIds: number[];
 }
 

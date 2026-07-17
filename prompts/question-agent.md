@@ -59,8 +59,30 @@ the time you're called, there's always at least 20 real answers behind you.
   blockbuster spectacle." Distinct from `plan` — this is about *what they'd
   probably love*, not which axis needs more confidence. Absent on the very
   first deep_dive call, before the first checkpoint has run.
+- `forced_target_axis`: when present, this **is** your target axis this
+  batch — decided upstream, not something to second-guess. Skip step 1
+  entirely and go straight to step 2 (decide `discover_params` for this
+  axis).
+- `contradiction_movie`: only present alongside `forced_target_axis`, a
+  `{title, year, genres, vote_count}` reference point — construct
+  `discover_params` for a movie similar to it on the forced axis, but in a
+  **different genre**, so the pick is a real test of the pattern rather
+  than "the same movie twice."
+- `disallowed_axis`: when present, you may not pick this axis as your
+  target this batch — choose your next-best option among the remaining
+  axes using the normal logic in step 1.
 
 ## Task
+
+**Check `forced_target_axis` and `disallowed_axis` first, before anything
+else** — both are decided upstream, not yours to weigh against `plan` or
+confidence numbers:
+- `forced_target_axis` present → that's your target axis. Skip straight to
+  step 2.
+- `disallowed_axis` present (and `forced_target_axis` isn't) → target
+  anything except that axis, using the normal logic in step 1 among the
+  remaining axes.
+- Neither present → normal step 1 logic across all 4 axes.
 
 1. Pick one target axis, following `plan` for the axis that most needs
    verification. If an axis already has high confidence, you may switch focus
@@ -163,7 +185,9 @@ the time you're called, there's always at least 20 real answers behind you.
 ### Example 1 (early deep-dive, targeting the lowest-confidence axis)
 
 Input (summary): `phase="deep_dive"`, `question_number=21`,
-`axis_scores.genre_width.confidence=0.1` (lower than the other axes)
+`axis_scores.genre_width.confidence=0.1` (lower than the other axes),
+`axis_scores.era.confidence=0.35`, `axis_scores.mainstream.confidence=0.4`
+(both already at/above the Gate 2 floor, so genre_width is eligible)
 
 Output:
 ```json
@@ -233,6 +257,45 @@ Output:
     "vote_count.gte": 2000,
     "vote_count.lte": 5000,
     "vote_average.gte": 7.5,
+    "sort_by": "vote_average.desc"
+  }
+}
+```
+
+### Example 5 (`forced_target_axis` present)
+
+Input (summary): `phase="deep_dive"`, `question_number=47`,
+`forced_target_axis="mainstream"`,
+`contradiction_movie={"title": "Jurassic World", "year": 2015, "genres": ["Action", "Adventure", "Science Fiction"], "vote_count": 18000}`.
+
+Output:
+```json
+{
+  "target_axis": "mainstream",
+  "reasoning": "Targeting a similarly high-vote-count title in a different genre from Jurassic World, to test the pattern rather than repeat it.",
+  "discover_params": {
+    "with_genres": [35],
+    "vote_count.gte": 15000,
+    "sort_by": "popularity.desc"
+  }
+}
+```
+
+### Example 6 (`disallowed_axis` present)
+
+Input (summary): `phase="deep_dive"`, `question_number=25`,
+`disallowed_axis="genre_width"`,
+`plan.era = {"score": 0.1, "confidence": 0.15, "plan": "Very early; keep testing"}`,
+`plan.mainstream = {"score": -0.2, "confidence": 0.2, "plan": "Very early; keep testing"}`.
+
+Output:
+```json
+{
+  "target_axis": "era",
+  "reasoning": "genre_width is off-limits this batch; era has the lower confidence between the two remaining early-stage axes.",
+  "discover_params": {
+    "primary_release_date.lte": "2005-01-01",
+    "vote_count.gte": 2000,
     "sort_by": "vote_average.desc"
   }
 }

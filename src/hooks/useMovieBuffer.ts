@@ -17,6 +17,7 @@ import type {
   QuestionMovie,
   RatedMovie,
 } from "../api-types";
+import type { Contradiction } from "../lib/contradiction";
 
 // How many recent target-axis picks to remember and echo back to the
 // agent (src/api-types.ts NextBatchRequest.recentTargetAxes) — enough for
@@ -35,6 +36,16 @@ export interface NextBatchContext {
   plan?: CheckpointPlan;
   /** Only read when the upcoming batch is in the deep_dive phase. */
   tasteHypothesis?: string;
+  /** Only read when the upcoming batch is in the deep_dive phase. Whatever
+   *  contradiction.ts found from the single most recent answer — null if
+   *  none. Not accumulated/deduped across batches; if it's still relevant
+   *  next batch too, detectContradiction will simply find it again from
+   *  the same still-most-recent answer. */
+  contradiction?: Contradiction | null;
+  /** How many franchise (Disney/Marvel/Pixar/Lucasfilm) movies have been
+   *  shown so far this session — read on every fetch, not just deep_dive
+   *  (see NextBatchRequest.franchiseShownCount). */
+  franchiseShownCount: number;
 }
 
 export interface UseMovieBufferOptions {
@@ -132,6 +143,8 @@ export function useMovieBuffer(options: UseMovieBufferOptions): UseMovieBufferRe
         batchSize,
         recentTargetAxes: recentTargetAxesRef.current,
         tasteHypothesis: phase === "deep_dive" ? context.tasteHypothesis : undefined,
+        contradiction: phase === "deep_dive" ? (context.contradiction ?? undefined) : undefined,
+        franchiseShownCount: context.franchiseShownCount,
       };
       const res = await fetch("/api/next-batch", {
         method: "POST",

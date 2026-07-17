@@ -64,24 +64,50 @@ export function pickRecommendSeeds(answers: Answer[]): RecommendSeed[] {
   }));
 }
 
-function tallyBy(answers: Answer[], pick: (a: Answer) => string[]): Record<string, number> {
-  const tally: Record<string, number> = {};
-  for (const a of answers) {
-    if (!a.seen) continue;
-    for (const key of pick(a)) tally[key] = (tally[key] ?? 0) + 1;
-  }
-  return tally;
+export interface Affinity {
+  /** How many seen+rated movies matched this genre/language. */
+  seenCount: number;
+  /** Average of the user's own 1-5 ratings across those movies. */
+  avgRating: number;
 }
 
-/** genre_coverage/language_coverage for RecommendHorizonRequest: computed
+/** Only tallies genres/languages the person actually saw and rated —
+ *  absence from the result means "never tested," not "disliked." This
+ *  distinction matters: a naive appearance-count tally (the original
+ *  design, tried first) made an untested genre and a confirmed-disliked
+ *  genre look identical — both "underrepresented" — so
+ *  recommend-horizon-agent.md would sometimes target genres with zero
+ *  real signal behind them (2026-07-17, user feedback: got recommended
+ *  something in a genre the quiz never actually asked about). Only genres
+ *  present here, with a low avgRating, represent a real confirmed
+ *  dispreference worth "broadening" against. */
+function tallyAffinityBy(answers: Answer[], pick: (a: Answer) => string[]): Record<string, Affinity> {
+  const sums: Record<string, { count: number; ratingSum: number }> = {};
+  for (const a of answers) {
+    if (!a.seen || a.rating === undefined) continue;
+    for (const key of pick(a)) {
+      const entry = sums[key] ?? { count: 0, ratingSum: 0 };
+      entry.count += 1;
+      entry.ratingSum += a.rating;
+      sums[key] = entry;
+    }
+  }
+  const out: Record<string, Affinity> = {};
+  for (const [key, { count, ratingSum }] of Object.entries(sums)) {
+    out[key] = { seenCount: count, avgRating: Math.round((ratingSum / count) * 100) / 100 };
+  }
+  return out;
+}
+
+/** genreAffinity/languageAffinity for RecommendHorizonRequest: computed
  *  from deep-dive-phase answers only, unless there aren't enough of them to
  *  be a meaningful tally — reuses SCORING_CONSTANTS.MIN_SEEN_FOR_SIGNAL
  *  (the same "enough data" bar scoring.ts already applies for its own
  *  low-signal cutoff) as the threshold, in which case screening answers are
  *  folded back in rather than returning a near-empty tally. */
-export function pickCoverageTallies(answers: Answer[]): {
-  genreCoverage: Record<string, number>;
-  languageCoverage: Record<string, number>;
+export function pickTasteAffinity(answers: Answer[]): {
+  genreAffinity: Record<string, Affinity>;
+  languageAffinity: Record<string, Affinity>;
 } {
   const deepDiveSeen = answers.filter((a, index) => isDeepDiveIndex(index) && a.seen);
   const source =
@@ -90,7 +116,7 @@ export function pickCoverageTallies(answers: Answer[]): {
       : answers;
 
   return {
-    genreCoverage: tallyBy(source, (a) => a.movie.genres),
-    languageCoverage: tallyBy(source, (a) => [a.movie.originalLanguage]),
+    genreAffinity: tallyAffinityBy(source, (a) => a.movie.genres),
+    languageAffinity: tallyAffinityBy(source, (a) => [a.movie.originalLanguage]),
   };
 }

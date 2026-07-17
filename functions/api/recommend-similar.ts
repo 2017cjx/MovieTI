@@ -21,7 +21,7 @@ import type {
   RecommendSimilarResponse,
 } from "../../src/api-types";
 import { runRecommendSimilarAgent, type Env as AgentEnv } from "./_lib/agents";
-import { getMovieRecommendations } from "./_lib/tmdb";
+import { FRANCHISE_CAP_PER_LIST, getMovieRecommendations } from "./_lib/tmdb";
 
 interface Env extends AgentEnv {
   TMDB_ACCESS_TOKEN: string;
@@ -85,6 +85,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       env.TMDB_ACCESS_TOKEN,
       excludeIds,
       CANDIDATE_FETCH_COUNT,
+      FRANCHISE_CAP_PER_LIST,
     );
     if (movies.length === 0) {
       const response: RecommendSimilarResponse = { status: "fallback", movies: null };

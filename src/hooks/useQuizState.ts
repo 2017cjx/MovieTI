@@ -9,6 +9,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { CheckpointPlan, QuestionMovie, RatedMovie } from "../api-types";
+import { detectContradiction } from "../lib/contradiction";
 import { computeScores } from "../scoring";
 import type { Answer } from "../types/answer";
 
@@ -159,6 +160,23 @@ export function useQuizState() {
 
   const provisional = useMemo(() => computeScores(state.answers), [state.answers]);
 
+  // Compared against the lean established *before* the latest answer, not
+  // one that already includes it — see contradiction.ts's doc comment.
+  const latestContradiction = useMemo(() => {
+    if (state.answers.length === 0) return null;
+    const priorScores = computeScores(state.answers.slice(0, -1)).axisScores;
+    return detectContradiction(state.answers[state.answers.length - 1], priorScores);
+  }, [state.answers]);
+
+  // Derived, not persisted separately — every shown movie already lives in
+  // `answers`, and QuestionMovie.isFranchise is set server-side, so this is
+  // just a count over data already there (2026-07-17, see
+  // NextBatchRequest.franchiseShownCount).
+  const franchiseShownCount = useMemo(
+    () => state.answers.filter((a) => a.movie.isFranchise).length,
+    [state.answers],
+  );
+
   return {
     answers: state.answers,
     checkpoint: state.checkpoint,
@@ -168,6 +186,8 @@ export function useQuizState() {
     recommendHorizon: state.recommendHorizon,
     axisScores: provisional.axisScores,
     ratedMoviesSoFar,
+    latestContradiction,
+    franchiseShownCount,
     recordAnswer,
     setCheckpoint,
     setTasteHypothesis,

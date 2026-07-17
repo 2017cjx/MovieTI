@@ -11,7 +11,7 @@ import type {
 import { STORAGE_KEY } from "./hooks/useQuizState";
 import { useRecommendations, type RecommendListState } from "./hooks/useRecommendations";
 import { getTypeEntry, renderTypeDescription } from "./lib/typeDescriptions";
-import { pickCoverageTallies, pickRecommendSeeds } from "./lib/recommendations";
+import { pickRecommendSeeds, pickTasteAffinity } from "./lib/recommendations";
 import { computeScores, SCORING_CONSTANTS } from "./scoring";
 import type { Answer } from "./types/answer";
 
@@ -176,12 +176,12 @@ export function ResultScreen({
   // toward deep-dive-phase answers.
   const shownMovieIds = answers.map((a) => a.movie.tmdbId);
   const candidateSeeds = pickRecommendSeeds(answers);
-  const { genreCoverage, languageCoverage } = pickCoverageTallies(answers);
+  const { genreAffinity, languageAffinity } = pickTasteAffinity(answers);
 
   const similarRequest: RecommendSimilarRequest | null =
     candidateSeeds.length > 0 ? { candidateSeeds, tasteHypothesis, shownMovieIds } : null;
   const horizonRequest: RecommendHorizonRequest | null = typeCode
-    ? { axisScores: result.axisScores, genreCoverage, languageCoverage, shownMovieIds }
+    ? { axisScores: result.axisScores, genreAffinity, languageAffinity, shownMovieIds }
     : null;
 
   const { similar: recommendSimilar, horizon: recommendHorizon } = useRecommendations({
@@ -258,11 +258,17 @@ export function ResultScreen({
       />
 
       <h2 className="script-heading">What kind of movies do I like?</h2>
-      <p className="result-body">{flourishText ?? rendered.body}</p>
-      {flourishFailed && !flourishText && (
-        <button className="retry-flourish-button" onClick={fetchFlourish}>
-          Try again
-        </button>
+      {flourishText ? (
+        <p className="result-body">{flourishText}</p>
+      ) : flourishFailed ? (
+        <>
+          <p className="result-body">{rendered.body}</p>
+          <button className="retry-flourish-button" onClick={fetchFlourish}>
+            Try again
+          </button>
+        </>
+      ) : (
+        <div className="recommend-spinner" role="status" aria-label="Loading" />
       )}
 
       <button className="restart-button" onClick={handleRestart}>

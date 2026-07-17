@@ -31,6 +31,22 @@ interface Env extends AgentEnv {
 
 const NOTABLE_ANSWERS_COUNT = 5;
 const SCREENING_QUESTION_COUNT = 20;
+// genreWidth's own accuracy depends on era/mainstream already having some
+// signal (scoring.ts's leaningMatchedSeen baseline needs an established
+// era/mainstream lean to filter against) — below this floor, disallow
+// genreWidth as this batch's target_axis. Enforced deterministically here
+// rather than left to the LLM's own confidence comparison: a prompt-only
+// version of this rule was live-tested (2026-07-17) and found unreliable —
+// the model would sometimes explain the rule correctly in its own
+// `reasoning` text and then pick genreWidth anyway. See
+// makeValidateQuestionAgentOutput in agents.ts for the enforcement side.
+const GENRE_WIDTH_DEPENDENCY_FLOOR = 0.3;
+// Session-wide franchise cap (Disney/Marvel/Pixar/Lucasfilm), matching
+// tmdb.ts's FRANCHISE_CAP_PER_LIST used by the 2 result-screen
+// recommendation lists — kept as a separate literal rather than importing
+// that constant, since this one is a *session total across ~80 questions*,
+// a different unit than "per one list build."
+const FRANCHISE_SESSION_CAP = 3;
 // Re-run the hypothesis checkpoint every 5 questions through deep_dive (not
 // just once at Q21) — a plan formed from only 20 screening answers goes
 // stale over the remaining 60 questions, and a periodic refresh lets it
@@ -146,6 +162,23 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     batch = getFallbackBatch(batchSize, body.shownMovieIds);
     source = "preset";
   } else {
+    // Session-wide cap of 3 franchise (Disney/Marvel/Pixar/Lucasfilm)
+    // movies across the whole quiz, spread out at most 1 per batch rather
+    // than letting one batch use up the whole budget at once (2026-07-17,
+    // user feedback — relaxed from the prior hard exclusion, see
+    // tmdb.ts's EXCLUDED_COMPANY_IDS comment).
+    const franchiseCap =
+      (body.franchiseShownCount ?? 0) < FRANCHISE_SESSION_CAP ? 1 : 0;
+
+    // A live contradiction (this batch only) always takes priority over
+    // the genreWidth dependency gate — mutually exclusive by construction.
+    const disallowedAxis =
+      !body.contradiction &&
+      (body.axisScores.era.confidence < GENRE_WIDTH_DEPENDENCY_FLOOR ||
+        body.axisScores.mainstream.confidence < GENRE_WIDTH_DEPENDENCY_FLOOR)
+        ? "genreWidth"
+        : undefined;
+
     const agentResult = await runQuestionAgent(
       {
         phase: body.phase,
@@ -156,6 +189,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         ratedMoviesSoFar: body.ratedMoviesSoFar,
         recentTargetAxes: body.recentTargetAxes ?? [],
         tasteHypothesis: body.tasteHypothesis,
+        contradiction: body.contradiction,
+        disallowedAxis,
       },
       env,
     );
@@ -168,6 +203,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           env.TMDB_ACCESS_TOKEN,
           body.shownMovieIds,
           batchSize,
+          franchiseCap,
         );
         if (movies.length >= batchSize) {
           agentBatch = movies;
