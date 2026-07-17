@@ -33,6 +33,19 @@ rating alone.
 If only one candidate is given, or the candidates are too few/too similar to
 meaningfully differentiate, it's fine to pick just one.
 
+**The two picks do not need to resemble each other, and you must not invent a
+shared throughline between them if one doesn't genuinely exist.** Each candidate is
+judged independently on how well *it* represents a real part of this person's
+taste — two very different movies (different genre, tone, era) can both be
+excellent seeds if each is a strong representative of *something* this person
+likes. A tense psychological thriller and a quiet character-driven romance can
+both be great picks for entirely different reasons; forcing them into "both share
+X" when the only actual commonality is an incidental, broad shared tag (e.g. both
+happen to be tagged "Drama" among several other tags, which most movies are) is
+worse than just stating the two separate reasons plainly. Never treat a shared
+genre tag alone as meaningful similarity — genre tags are broad and multiple, and
+sharing one doesn't mean two movies appeal to the same sensibility.
+
 Output the following JSON format **only**. No greeting, no explanation, no text
 outside the JSON.
 
@@ -47,11 +60,14 @@ outside the JSON.
 ```json
 {
   "selected_tmdb_ids": [603, 155],
-  "reasoning": "Both are tense, morally ambiguous genre films outside the mainstream — the clearest throughline across everything they rated highly."
+  "reasoning": "..."
 }
 ```
+(The reasoning may describe one shared throughline, or two independent reasons —
+see the two examples below. Don't default to "both are X" as a template; only say
+it when it's genuinely true.)
 
-## Example
+## Example 1 (a real shared throughline exists — say so)
 
 Input (summary):
 ```json
@@ -70,5 +86,32 @@ Output:
 {
   "selected_tmdb_ids": [155, 603],
   "reasoning": "The Dark Knight and The Matrix both match the dark, morally ambiguous throughline the hypothesis identifies, even though A Cinderella Story has the same top rating — that one reads as an outlier, not representative of the broader pattern."
+}
+```
+
+## Example 2 (no real throughline — two independent reasons, and that's fine)
+
+Input (summary):
+```json
+{
+  "candidate_seeds": [
+    { "tmdb_id": 807, "title": "Se7en", "year": 1995, "genres": ["Crime", "Drama", "Mystery", "Thriller"], "user_rating": 5 },
+    { "tmdb_id": 398818, "title": "Call Me by Your Name", "year": 2017, "genres": ["Drama", "Romance"], "user_rating": 5 },
+    { "tmdb_id": 411, "title": "The Chronicles of Narnia: Prince Caspian", "year": 2008, "genres": ["Adventure", "Family", "Fantasy"], "user_rating": 3 }
+  ],
+  "taste_hypothesis": null
+}
+```
+Se7en and Call Me by Your Name share nothing meaningful beyond both being tagged
+"Drama" — one is a grim serial-killer procedural, the other an intimate coming-of-age
+romance. Inventing a false connection between them (e.g. claiming they're both
+"character-driven" or "critically acclaimed" as if that's a distinguishing taste
+signal) would be worse than just naming the two separate reasons.
+
+Output:
+```json
+{
+  "selected_tmdb_ids": [807, 398818],
+  "reasoning": "No real throughline connects these two — they're picked for independent reasons. Se7en represents a strong pull toward bleak, morally heavy procedurals; Call Me by Your Name represents an equally strong but unrelated pull toward intimate, slow-paced character dramas. Prince Caspian's lower rating (3) makes it a weaker representative of either."
 }
 ```
