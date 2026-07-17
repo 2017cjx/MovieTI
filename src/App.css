@@ -248,13 +248,18 @@ button:hover {
 
 .recommend-row {
   width: 100%;
-  display: flex;
+  display: grid;
+  /* Fixed 5-column grid rather than flex — a list with fewer than 5
+     posters (e.g. cross-list dedup ran out of backfill candidates) should
+     leave empty columns, not stretch its posters wider than the other
+     list's. Keeps poster size consistent across both recommendation rows
+     regardless of how many each one actually returned. */
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
 
 .recommend-poster {
-  flex: 1 1 0;
-  min-width: 0;
+  width: 100%;
   aspect-ratio: 2 / 3;
   object-fit: cover;
   border-radius: 8px;
