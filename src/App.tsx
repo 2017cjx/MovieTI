@@ -51,6 +51,8 @@ function App() {
         cachedRecommendHorizon={quiz.recommendHorizon}
         onRecommendSimilarResolved={quiz.setRecommendSimilar}
         onRecommendHorizonResolved={quiz.setRecommendHorizon}
+        cachedFlourishText={quiz.flourishText}
+        onFlourishTextResolved={quiz.setFlourishText}
       />
     );
   }

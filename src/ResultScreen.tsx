@@ -100,6 +100,11 @@ interface ResultScreenProps {
   cachedRecommendHorizon?: QuestionMovie[] | null;
   onRecommendSimilarResolved: (movies: QuestionMovie[] | null) => void;
   onRecommendHorizonResolved: (movies: QuestionMovie[] | null) => void;
+  /** Present (including null) iff already fetched in an earlier visit to
+   *  this result — same reload-stability contract as
+   *  cachedRecommendSimilar/cachedRecommendHorizon (2026-07-17). */
+  cachedFlourishText?: string | null;
+  onFlourishTextResolved: (text: string | null) => void;
 }
 
 export function ResultScreen({
@@ -110,15 +115,18 @@ export function ResultScreen({
   cachedRecommendHorizon,
   onRecommendSimilarResolved,
   onRecommendHorizonResolved,
+  cachedFlourishText,
+  onFlourishTextResolved,
 }: ResultScreenProps) {
   const result = computeScores(answers, { final: true });
   // Only one body of text is ever shown (2026-07-15 — showing the static
   // template *and* the live flourish stacked together read as redundant).
   // The live flourish is the primary content; the static
-  // type_descriptions.json body is the fallback shown while it's loading
-  // and if it fails, not a permanent second block.
-  const [flourishText, setFlourishText] = useState<string | null>(null);
-  const [flourishFailed, setFlourishFailed] = useState(false);
+  // type_descriptions.json body is the fallback shown only if it fails
+  // (2026-07-17 revised: previously also shown while loading, replaced by
+  // a spinner, per the other two result-screen lists' pattern).
+  // undefined = still loading, null = failed, string = resolved.
+  const [flourishText, setFlourishText] = useState<string | null | undefined>(cachedFlourishText);
 
   const ratedSeen = answers.filter(
     (a): a is Answer & { rating: number } => a.seen && a.rating !== undefined,
@@ -131,7 +139,7 @@ export function ResultScreen({
 
   const fetchFlourish = useCallback(() => {
     if (!typeCode || !signature) return () => {};
-    setFlourishFailed(false);
+    setFlourishText(undefined);
     const request: FlourishRequest = {
       typeCode,
       axisScores: result.axisScores,
@@ -149,14 +157,14 @@ export function ResultScreen({
       .then((res) => res.json())
       .then((data: FlourishResponse) => {
         if (cancelled) return;
-        if (data.comment) {
-          setFlourishText(data.comment);
-        } else {
-          setFlourishFailed(true);
-        }
+        const text = data.comment ?? null;
+        setFlourishText(text);
+        onFlourishTextResolved(text);
       })
       .catch(() => {
-        if (!cancelled) setFlourishFailed(true);
+        if (cancelled) return;
+        setFlourishText(null);
+        onFlourishTextResolved(null);
       });
     return () => {
       cancelled = true;
@@ -167,7 +175,15 @@ export function ResultScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeCode]);
 
-  useEffect(() => fetchFlourish(), [fetchFlourish]);
+  useEffect(() => {
+    // Already resolved (success or failure) in an earlier visit to this
+    // result — don't re-fetch automatically. The retry button below calls
+    // fetchFlourish() directly, bypassing this cache check, same as
+    // useRecommendations.ts's caching contract for the other 2 lists.
+    if (cachedFlourishText !== undefined) return;
+    return fetchFlourish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchFlourish]);
 
   // Both requests are built unconditionally (hooks below can't be called
   // conditionally) — null means "not enough data," which useRecommendations
@@ -260,7 +276,7 @@ export function ResultScreen({
       <h2 className="script-heading">What kind of movies do I like?</h2>
       {flourishText ? (
         <p className="result-body">{flourishText}</p>
-      ) : flourishFailed ? (
+      ) : flourishText === null ? (
         <>
           <p className="result-body">{rendered.body}</p>
           <button className="retry-flourish-button" onClick={fetchFlourish}>

@@ -37,6 +37,12 @@ interface PersistedState {
    *  candidate selection — see useRecommendations.ts. */
   recommendSimilar?: QuestionMovie[] | null;
   recommendHorizon?: QuestionMovie[] | null;
+  /** The result-writer's flourish paragraph. Same tri-state/reload-stability
+   *  contract as recommendSimilar/recommendHorizon above (2026-07-17,
+   *  user-requested — this used to live in ResultScreen's own local state,
+   *  un-cached, so a reload silently generated a *different* paragraph
+   *  each time, unlike the other two AI-generated result-screen sections). */
+  flourishText?: string | null;
 }
 
 function loadPersisted(): PersistedState {
@@ -51,6 +57,7 @@ function loadPersisted(): PersistedState {
       earlyTasteHypothesis: parsed.earlyTasteHypothesis,
       recommendSimilar: parsed.recommendSimilar,
       recommendHorizon: parsed.recommendHorizon,
+      flourishText: parsed.flourishText,
     };
   } catch {
     return { answers: [] };
@@ -139,6 +146,13 @@ export function useQuizState() {
     [patch],
   );
 
+  const setFlourishText = useCallback(
+    (flourishText: string | null) => {
+      patch((prev) => ({ ...prev, flourishText }));
+    },
+    [patch],
+  );
+
   const reset = useCallback(() => {
     patch(() => ({
       answers: [],
@@ -147,6 +161,7 @@ export function useQuizState() {
       earlyTasteHypothesis: undefined,
       recommendSimilar: undefined,
       recommendHorizon: undefined,
+      flourishText: undefined,
     }));
   }, [patch]);
 
@@ -184,6 +199,7 @@ export function useQuizState() {
     earlyTasteHypothesis: state.earlyTasteHypothesis,
     recommendSimilar: state.recommendSimilar,
     recommendHorizon: state.recommendHorizon,
+    flourishText: state.flourishText,
     axisScores: provisional.axisScores,
     ratedMoviesSoFar,
     latestContradiction,
@@ -193,6 +209,7 @@ export function useQuizState() {
     setTasteHypothesis,
     setRecommendSimilar,
     setRecommendHorizon,
+    setFlourishText,
     reset,
   };
 }
