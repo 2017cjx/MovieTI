@@ -224,21 +224,6 @@ button:hover {
   background: var(--accent-gradient);
 }
 
-.favorites-row {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-}
-
-.favorite-poster {
-  width: 48px;
-  height: 72px;
-  object-fit: cover;
-  border-radius: 6px;
-  background: var(--bg-elevated);
-}
-
 .recommend-section {
   width: 100%;
   display: flex;

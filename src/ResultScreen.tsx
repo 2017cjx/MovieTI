@@ -241,23 +241,10 @@ export function ResultScreen({
         })}
       </div>
 
-      {topRated.length > 0 && (
-        <div className="favorites-row">
-          {topRated.map((a) => (
-            <img
-              key={a.movie.tmdbId}
-              className="favorite-poster"
-              src={
-                a.movie.posterPath
-                  ? `https://image.tmdb.org/t/p/w92${a.movie.posterPath}`
-                  : undefined
-              }
-              alt={a.movie.title}
-              title={a.movie.title}
-            />
-          ))}
-        </div>
-      )}
+      <RecommendSection
+        heading="Movies you super liked"
+        movies={topRated.length > 0 ? topRated.map((a) => a.movie) : null}
+      />
 
       <RecommendSection heading="You might like these movies" movies={recommendSimilar} />
       <RecommendSection
