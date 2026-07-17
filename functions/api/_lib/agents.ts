@@ -452,6 +452,7 @@ export async function runResultWriter(
     topRatedMovies: ResultWriterMovie[];
     signatureMovie: ResultWriterMovie & { deviation: number };
     tasteHypothesis?: string;
+    earlyTasteHypothesis?: string;
   },
   env: Env,
 ): Promise<{ status: "ok" | "fallback"; comment: string | null }> {
@@ -474,6 +475,7 @@ export async function runResultWriter(
       tmdb_vote_average: input.signatureMovie.tmdbVoteAverage,
     },
     taste_hypothesis: input.tasteHypothesis,
+    early_taste_hypothesis: input.earlyTasteHypothesis,
   });
 
   const movieTitles = [input.signatureMovie.title, ...input.topRatedMovies.map((m) => m.title)];

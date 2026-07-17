@@ -49,6 +49,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       topRatedMovies: body.topRatedMovies,
       signatureMovie: body.signatureMovie,
       tasteHypothesis: body.tasteHypothesis,
+      earlyTasteHypothesis: body.earlyTasteHypothesis,
     },
     context.env,
   );

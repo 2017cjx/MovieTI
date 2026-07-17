@@ -93,6 +93,7 @@ function topGenreOf(answers: Answer[]): string {
 interface ResultScreenProps {
   answers: Answer[];
   tasteHypothesis?: string;
+  earlyTasteHypothesis?: string;
   /** Present (including null) iff already fetched in an earlier visit to
    *  this result — see useRecommendations.ts for the caching contract. */
   cachedRecommendSimilar?: QuestionMovie[] | null;
@@ -104,6 +105,7 @@ interface ResultScreenProps {
 export function ResultScreen({
   answers,
   tasteHypothesis,
+  earlyTasteHypothesis,
   cachedRecommendSimilar,
   cachedRecommendHorizon,
   onRecommendSimilarResolved,
@@ -136,6 +138,7 @@ export function ResultScreen({
       topRatedMovies,
       signatureMovie: { ...toRatedMovie(signature), deviation: signature.deviation },
       tasteHypothesis,
+      earlyTasteHypothesis,
     };
     let cancelled = false;
     fetch("/api/flourish", {

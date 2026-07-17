@@ -42,6 +42,13 @@ no separate paragraph next to yours, so make it complete on its own.
   alongside the axes. May be absent (early/low-signal sessions never reach
   the point in the quiz where it's formed) — write from `axis_summary` and
   the movie lists alone when it's missing.
+- `early_taste_hypothesis`: the *very first* `taste_hypothesis` formed for
+  this person, from Q21 — before 60 more questions of evidence
+  accumulated. `taste_hypothesis` above is always the latest, most-informed
+  read; this is the original one, frozen. When the two meaningfully
+  differ, this is a real "here's what the early signal suggested, here's
+  what the fuller picture actually shows" moment (see Task below). When
+  they're essentially the same claim, or this field is absent, ignore it.
 
 `user_rating` is a number for you to reason with (how far above/below
 `tmdb_vote_average`, how strongly positive or negative), **not something to
@@ -83,13 +90,26 @@ somewhere, in whatever order serves the strongest read:
   decisively") instead of asserting it as settled. Don't hedge everything
   indiscriminately.
 
+**Optional: the early-vs-actual turn.** When `early_taste_hypothesis` is
+present and genuinely differs from `taste_hypothesis` (a different genre,
+mood, or region — not just the same claim reworded), work in one sentence
+contrasting the initial read against how it actually turned out. Frame it
+as the *signal* evolving as more evidence came in, not as narrating the
+app's internal process — "the early read pointed toward X, but the fuller
+picture is actually Y" reads right; "I originally guessed X" does not
+(still second person, never "I" — see Constraints). Skip this turn
+entirely if the two hypotheses are essentially the same claim, or if
+`early_taste_hypothesis` is absent — a forced contrast where there isn't a
+real one reads as gimmicky, not insightful.
+
 ## Constraints
 
 - English, second person ("you"/"your") — never first person ("I")
 - Clear, polished prose. Avoid slangy or overly casual phrasing ("no
   contest," "I guess," "TBH," excessive filler) — natural and readable,
   but not chatty
-- One paragraph, 3-5 sentences, roughly 70-130 words
+- One paragraph, 3-5 sentences, roughly 70-130 words (up to ~150 is fine
+  when the early-vs-actual turn is used and needs the extra room)
 - Must include at least one movie title
 - **Never state the raw numeric rating** (no "a 5", "a perfect 5", "rated it
   2", "2/5", etc.) — describe the reaction in words instead
@@ -159,4 +179,17 @@ titles.
 Output:
 ```
 You don't watch a large volume of movies overall, but what you do watch skews hard toward horror most people have never heard of. That combination — a light overall volume paired with a strong pull toward the underground — suggests deliberate picks rather than casual browsing; you'd rather track down one great discovery than sit through ten familiar ones.
+```
+
+### Example 5 (`early_taste_hypothesis` present and meaningfully different — use the reveal)
+
+Input (summary): `early_taste_hypothesis`: "Likely into big, crowd-pleasing
+action blockbusters." `taste_hypothesis` (latest): "Actually gravitates
+toward tightly-plotted heist and con-artist films — the appeal is the
+plotting, not spectacle." `top_rated_movies` includes Ocean's Eleven and
+The Sting.
+
+Output:
+```
+The early read on your taste pointed toward big, crowd-pleasing action — but the fuller picture tells a more specific story: what you're actually chasing is a tightly-plotted heist, the kind where the fun is watching a plan click into place. Ocean's Eleven and The Sting both landed as clear favorites, and neither one leans on spectacle to work. Once the sample grew past a handful of blockbuster-adjacent picks early on, it became clear the "big action" signal was really just clever plotting wearing an action movie's disguise.
 ```

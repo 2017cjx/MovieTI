@@ -18,6 +18,16 @@ interface PersistedState {
   answers: Answer[];
   checkpoint?: CheckpointPlan;
   tasteHypothesis?: string;
+  /** The *first* hypothesis checkpoint's tasteHypothesis (formed at Q21,
+   *  from just the 20 screening answers), captured once and never
+   *  overwritten by later re-runs — unlike `tasteHypothesis` above, which
+   *  always holds the latest. Lets the result screen contrast "the early
+   *  read" against "the final read" (2026-07-17, user-requested — this
+   *  reveal was the reason the hypothesis was kept hidden from the user
+   *  until the result screen in the first place, per CONTEXT.md
+   *  "仮説形成エージェントの定期再実行"). Absent for low-signal sessions
+   *  that never reach deep_dive/Q21. */
+  earlyTasteHypothesis?: string;
   /** The two result-screen recommendation lists (docs/adr/0006 item 9).
    *  undefined = not yet fetched, null = fetched but failed (section stays
    *  omitted on reload too, not re-attempted), array = fetched
@@ -37,6 +47,7 @@ function loadPersisted(): PersistedState {
       answers: parsed.answers ?? [],
       checkpoint: parsed.checkpoint,
       tasteHypothesis: parsed.tasteHypothesis,
+      earlyTasteHypothesis: parsed.earlyTasteHypothesis,
       recommendSimilar: parsed.recommendSimilar,
       recommendHorizon: parsed.recommendHorizon,
     };
@@ -101,7 +112,14 @@ export function useQuizState() {
 
   const setTasteHypothesis = useCallback(
     (tasteHypothesis: string) => {
-      patch((prev) => ({ ...prev, tasteHypothesis }));
+      patch((prev) => ({
+        ...prev,
+        tasteHypothesis,
+        // Capture only the first one ever seen this session; every later
+        // re-run keeps overwriting `tasteHypothesis` above but must not
+        // touch this.
+        earlyTasteHypothesis: prev.earlyTasteHypothesis ?? tasteHypothesis,
+      }));
     },
     [patch],
   );
@@ -125,6 +143,7 @@ export function useQuizState() {
       answers: [],
       checkpoint: undefined,
       tasteHypothesis: undefined,
+      earlyTasteHypothesis: undefined,
       recommendSimilar: undefined,
       recommendHorizon: undefined,
     }));
@@ -144,6 +163,7 @@ export function useQuizState() {
     answers: state.answers,
     checkpoint: state.checkpoint,
     tasteHypothesis: state.tasteHypothesis,
+    earlyTasteHypothesis: state.earlyTasteHypothesis,
     recommendSimilar: state.recommendSimilar,
     recommendHorizon: state.recommendHorizon,
     axisScores: provisional.axisScores,

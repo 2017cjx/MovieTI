@@ -184,6 +184,12 @@ export interface FlourishRequest {
    *  few-shot examples that all opened with the same phrase, was producing
    *  near-identical-shaped output across different types). */
   tasteHypothesis?: string;
+  /** The *first* hypothesis checkpoint's tasteHypothesis (Q21, before 60
+   *  more questions of evidence), distinct from `tasteHypothesis` above
+   *  (which is always the latest). Lets result-writer contrast an early
+   *  read against the final one. Absent whenever `tasteHypothesis` is
+   *  absent (both come from the same low-signal gate). */
+  earlyTasteHypothesis?: string;
 }
 
 export interface FlourishResponse {

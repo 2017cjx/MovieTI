@@ -44,6 +44,7 @@ function App() {
       <ResultScreen
         answers={quiz.answers}
         tasteHypothesis={quiz.tasteHypothesis}
+        earlyTasteHypothesis={quiz.earlyTasteHypothesis}
         cachedRecommendSimilar={quiz.recommendSimilar}
         cachedRecommendHorizon={quiz.recommendHorizon}
         onRecommendSimilarResolved={quiz.setRecommendSimilar}
