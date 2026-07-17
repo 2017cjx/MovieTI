@@ -135,6 +135,7 @@ export function ResultScreen({
       axisScores: result.axisScores,
       topRatedMovies,
       signatureMovie: { ...toRatedMovie(signature), deviation: signature.deviation },
+      tasteHypothesis,
     };
     let cancelled = false;
     fetch("/api/flourish", {
@@ -157,8 +158,9 @@ export function ResultScreen({
     return () => {
       cancelled = true;
     };
-    // Only re-run on typeCode change (mount); topRatedMovies/signature come
-    // from the same final `answers` snapshot as typeCode.
+    // Only re-run on typeCode change (mount); topRatedMovies/signature/
+    // tasteHypothesis all come from the same final `answers`/persisted-quiz
+    // snapshot as typeCode.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeCode]);
 

@@ -176,6 +176,14 @@ export interface FlourishRequest {
     /** rating (normalized to 0-10) minus tmdbVoteAverage; signed. */
     deviation: number;
   };
+  /** From the hypothesis-agent checkpoint, if deep_dive reached it (absent
+   *  for low-signal sessions). Added 2026-07-17 so result-writer has a
+   *  specific, content-level claim to lead with instead of only axis
+   *  leanings — see prompts/result-writer.md's rewritten Task section
+   *  (the prior version's fixed "lead with genre" formula, reinforced by
+   *  few-shot examples that all opened with the same phrase, was producing
+   *  near-identical-shaped output across different types). */
+  tasteHypothesis?: string;
 }
 
 export interface FlourishResponse {

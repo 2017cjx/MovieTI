@@ -48,6 +48,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       axisScores: body.axisScores,
       topRatedMovies: body.topRatedMovies,
       signatureMovie: body.signatureMovie,
+      tasteHypothesis: body.tasteHypothesis,
     },
     context.env,
   );
