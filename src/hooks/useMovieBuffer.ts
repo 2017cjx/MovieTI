@@ -164,9 +164,17 @@ export function useMovieBuffer(options: UseMovieBufferOptions): UseMovieBufferRe
       // console rather than only in Cloudflare's server-side logs.
       if (data.reasoning) console.log("[MovieTI] question-agent reasoning:", data.reasoning);
       if (data.checkpoint || data.tasteHypothesis) {
-        console.log("[MovieTI] hypothesis-agent checkpoint:", {
+        // Natural-language guesswork only — score/confidence numbers are
+        // already visible in the axis bars on the result screen itself, so
+        // repeating them here would just be noise (2026-07-17, user-requested).
+        const planText = data.checkpoint
+          ? Object.fromEntries(
+              Object.entries(data.checkpoint).map(([axis, axisPlan]) => [axis, axisPlan.plan]),
+            )
+          : undefined;
+        console.log("[MovieTI] hypothesis-agent guess:", {
           tasteHypothesis: data.tasteHypothesis,
-          plan: data.checkpoint,
+          plan: planText,
         });
       }
       setError(false);
