@@ -66,6 +66,19 @@ function sanitizeParams(params: DiscoverParams): DiscoverParams {
   if (clean["vote_average.lte"] !== undefined) {
     clean["vote_average.lte"] = Math.max(0, Math.min(10, clean["vote_average.lte"]));
   }
+  if (
+    clean["primary_release_date.gte"] !== undefined &&
+    clean["primary_release_date.lte"] !== undefined &&
+    clean["primary_release_date.gte"] > clean["primary_release_date.lte"]
+  ) {
+    // An inverted range (gte after lte) always returns zero results — drop
+    // gte rather than let a malformed agent output (observed from
+    // recommend-horizon-agent.md during testing: gte 2005, lte 1999 in the
+    // same response) silently produce an empty candidate pool. String
+    // comparison is safe here since both are ISO 8601 dates (YYYY-MM-DD),
+    // which sort lexicographically the same as chronologically.
+    delete clean["primary_release_date.gte"];
+  }
   return clean;
 }
 
@@ -203,6 +216,69 @@ export async function discoverMovies(
   const excluded = new Set(excludeIds);
   return shuffle(results)
     .filter((m) => !excluded.has(m.id) && m.release_date && m.poster_path)
+    .slice(0, count)
+    .map((m) => ({
+      tmdbId: m.id,
+      title: m.title,
+      year: Number(m.release_date.slice(0, 4)),
+      posterPath: m.poster_path,
+      genres: m.genre_ids.map((id) => genreMap.get(id)).filter((g): g is string => !!g),
+      voteCount: m.vote_count,
+      voteAverage: Math.round(m.vote_average * 10) / 10,
+      originalLanguage: m.original_language,
+    }));
+}
+
+/** Queries TMDb `/movie/{id}/recommendations` for each seed id and merges
+ *  the results, deduped. Used by functions/api/recommend-similar.ts
+ *  (docs/adr/0006) — unlike discoverMovies(), this endpoint takes no
+ *  query-parameter filters at all (it's "movies like this one", not a
+ *  search), so `without_companies`/vote_count/language guardrails can't be
+ *  requested from TMDb directly; the vote_count floor and
+ *  poster/release_date completeness are enforced by filtering the response
+ *  instead. The franchise exclusion (EXCLUDED_COMPANY_IDS) has no
+ *  equivalent lever here — TMDb's recommendation results don't include
+ *  production_company ids to filter on — so a Marvel/Pixar title could
+ *  technically appear in this list where it can't in discoverMovies()'s.
+ *  Accepted as a known gap rather than solved, given this list is seeded
+ *  from the user's own highly-rated movies (unlikely to skew toward exactly
+ *  the franchises discoverMovies() excludes for diversity reasons during
+ *  the quiz). */
+export async function getMovieRecommendations(
+  seedTmdbIds: number[],
+  accessToken: string,
+  excludeIds: number[],
+  count: number,
+): Promise<QuestionMovie[]> {
+  const genreMap = await getGenreMap(accessToken);
+  const excluded = new Set(excludeIds);
+  const seenIds = new Set<number>();
+  const merged: TmdbMovieResult[] = [];
+
+  for (const seedId of seedTmdbIds) {
+    const res = await fetch(
+      `${TMDB_BASE_URL}/movie/${seedId}/recommendations?language=en-US&page=1`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    // One bad/unrecognized seed id shouldn't sink the whole call — the
+    // other seed (if any) may still produce usable results.
+    if (!res.ok) continue;
+    const data = (await res.json()) as { results: TmdbMovieResult[] };
+    for (const m of data.results) {
+      if (seenIds.has(m.id)) continue;
+      seenIds.add(m.id);
+      merged.push(m);
+    }
+  }
+
+  return shuffle(merged)
+    .filter(
+      (m) =>
+        !excluded.has(m.id) &&
+        m.release_date &&
+        m.poster_path &&
+        m.vote_count >= MIN_VOTE_COUNT_GUARDRAIL,
+    )
     .slice(0, count)
     .map((m) => ({
       tmdbId: m.id,

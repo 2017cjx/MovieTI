@@ -140,6 +140,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   let batch: QuestionMovie[] = [];
   let source: NextBatchResponse["source"];
   let targetAxis: NextBatchResponse["targetAxis"];
+  let reasoning: NextBatchResponse["reasoning"];
 
   if (body.phase === "screening") {
     batch = getFallbackBatch(batchSize, body.shownMovieIds);
@@ -192,13 +193,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       batch = agentBatch;
       source = "agent";
       targetAxis = agentResult.source === "agent" ? agentResult.data.targetAxis : undefined;
+      reasoning = agentResult.source === "agent" ? agentResult.data.reasoning : undefined;
     } else {
       batch = getFallbackBatch(batchSize, body.shownMovieIds);
       source = "fallback";
     }
   }
 
-  const response: NextBatchResponse = { batch, source, targetAxis };
+  const response: NextBatchResponse = { batch, source, targetAxis, reasoning };
 
   if (hypothesisPromise) {
     const { checkpoint, tasteHypothesis } = await hypothesisPromise;

@@ -1,7 +1,16 @@
-import type { AxisId, AxisScores, CheckpointPlan, Phase, RatedMovie } from "../../../src/api-types";
+import type {
+  AxisId,
+  AxisScores,
+  CheckpointPlan,
+  Phase,
+  RatedMovie,
+  RecommendSeed,
+} from "../../../src/api-types";
 import {
   HYPOTHESIS_AGENT_PROMPT,
   QUESTION_AGENT_PROMPT,
+  RECOMMENDHORIZON_AGENT_PROMPT,
+  RECOMMENDSIMILAR_AGENT_PROMPT,
   RESULT_WRITER_PROMPT,
 } from "./prompts.generated";
 import { runLlmTask, type ValidationResult } from "./llm-task";
@@ -39,6 +48,11 @@ export interface Env {
 //      model) but not at the cost of a demo that visibly hangs.
 const QUESTION_AGENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
 const HYPOTHESIS_AGENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
+// Same small structured-output model as the two agents above (docs/adr/0006
+// item 4) — both recommend-* agents only ever emit JSON, no user-facing
+// prose, so the same "structured output -> small model" split applies.
+const RECOMMEND_SIMILAR_AGENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
+const RECOMMEND_HORIZON_AGENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
 // Bigger model — the only one of the 3 agents whose output is user-facing
 // prose, where quality (not just structured-output reliability) matters
 // (docs/adr/0005).
@@ -96,6 +110,10 @@ const ALLOWED_DISCOVER_KEYS = new Set([
 export interface QuestionAgentOutput {
   targetAxis: AxisId;
   discoverParams: DiscoverParams;
+  /** The agent's own free-text explanation (prompts/question-agent.md's
+   *  `reasoning` field) — not used for any selection logic, forwarded
+   *  purely for client-side console debugging (2026-07-17). */
+  reasoning?: string;
 }
 
 export type QuestionAgentResult =
@@ -147,6 +165,7 @@ function validateQuestionAgentOutput(raw: string): ValidationResult<QuestionAgen
     data: {
       targetAxis: SNAKE_TO_AXIS_ID[obj.target_axis],
       discoverParams: params as DiscoverParams,
+      reasoning: typeof obj.reasoning === "string" ? obj.reasoning : undefined,
     },
   };
 }
@@ -479,4 +498,189 @@ export async function runResultWriter(
   return result.source === "agent"
     ? { status: "ok", comment: result.data }
     : { status: "fallback", comment: null };
+}
+
+// ---------------------------------------------------------------------------
+// Recommend-similar agent (POST /api/recommend-similar) — "You might like
+// these movies". Single phase (docs/adr/0006, revised same-day from an
+// initial 2-phase design): picks which 1-2 of an already-narrowed candidate
+// list to query TMDb `/recommendations` with. Never re-ranks TMDb's
+// results afterward — functions/api/recommend-similar.ts uses whatever
+// getMovieRecommendations() returns as-is.
+// ---------------------------------------------------------------------------
+
+export interface RecommendSimilarAgentOutput {
+  selectedTmdbIds: number[];
+  /** Debugging aid only (2026-07-17) — see QuestionAgentOutput.reasoning. */
+  reasoning?: string;
+}
+
+export type RecommendSimilarAgentResult =
+  | { source: "agent"; data: RecommendSimilarAgentOutput }
+  | { source: "fallback" };
+
+/** At most this many seeds get queried against TMDb /recommendations — the
+ *  agent's whole point is narrowing "up to 5 candidates" down to the ones
+ *  that best represent overall taste, not just deferring that choice to
+ *  more TMDb calls. */
+const MAX_SELECTED_SEEDS = 2;
+
+function makeValidateRecommendSimilarOutput(
+  candidateIds: number[],
+): (raw: string) => ValidationResult<RecommendSimilarAgentOutput> {
+  const allowed = new Set(candidateIds);
+  return (raw) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stripCodeFence(raw));
+    } catch {
+      return { ok: false, reason: "not valid JSON" };
+    }
+    if (typeof parsed !== "object" || parsed === null) {
+      return { ok: false, reason: "not a JSON object" };
+    }
+    const obj = parsed as Record<string, unknown>;
+    if (!Array.isArray(obj.selected_tmdb_ids) || obj.selected_tmdb_ids.length === 0) {
+      return { ok: false, reason: "missing/empty selected_tmdb_ids" };
+    }
+    // Never trust an LLM-emitted id at face value — it must be one of the
+    // ids actually offered as a candidate, same defensive posture as
+    // validateQuestionAgentOutput's ALLOWED_DISCOVER_KEYS check.
+    const ids = obj.selected_tmdb_ids.filter(
+      (id): id is number => typeof id === "number" && allowed.has(id),
+    );
+    if (ids.length === 0) {
+      return { ok: false, reason: "no selected_tmdb_ids matched the given candidates" };
+    }
+    return {
+      ok: true,
+      data: {
+        selectedTmdbIds: ids.slice(0, MAX_SELECTED_SEEDS),
+        reasoning: typeof obj.reasoning === "string" ? obj.reasoning : undefined,
+      },
+    };
+  };
+}
+
+export async function runRecommendSimilarAgent(
+  input: { candidateSeeds: RecommendSeed[]; tasteHypothesis?: string },
+  env: Env,
+): Promise<RecommendSimilarAgentResult> {
+  const userMessage = JSON.stringify({
+    candidate_seeds: input.candidateSeeds.map((s) => ({
+      tmdb_id: s.tmdbId,
+      title: s.title,
+      year: s.year,
+      genres: s.genres,
+      user_rating: s.rating,
+    })),
+    taste_hypothesis: input.tasteHypothesis,
+  });
+
+  const result = await runLlmTask<RecommendSimilarAgentOutput, undefined>({
+    call: async () => {
+      const res = await env.AI.run(RECOMMEND_SIMILAR_AGENT_MODEL, {
+        messages: [
+          { role: "system", content: RECOMMENDSIMILAR_AGENT_PROMPT },
+          { role: "user", content: userMessage },
+        ],
+        ...STRUCTURED_SAMPLING,
+      });
+      const response = (res as { response: unknown }).response;
+      return typeof response === "string" ? response : JSON.stringify(response);
+    },
+    validate: makeValidateRecommendSimilarOutput(input.candidateSeeds.map((s) => s.tmdbId)),
+    fallback: () => undefined,
+    maxAttempts: 3, // same reasoning as the question-agent above
+  });
+
+  return result.source === "agent"
+    ? { source: "agent", data: result.data }
+    : { source: "fallback" };
+}
+
+// ---------------------------------------------------------------------------
+// Recommend-horizon agent (POST /api/recommend-horizon) — "Movies that
+// could broaden your horizon". Single phase, same shape as the
+// recommend-similar agent above: decides TMDb discover_params, never sees
+// or re-ranks the TMDb results.
+// ---------------------------------------------------------------------------
+
+export interface RecommendHorizonAgentOutput {
+  discoverParams: DiscoverParams;
+  /** Debugging aid only (2026-07-17) — see QuestionAgentOutput.reasoning. */
+  reasoning?: string;
+}
+
+export type RecommendHorizonAgentResult =
+  | { source: "agent"; data: RecommendHorizonAgentOutput }
+  | { source: "fallback" };
+
+/** Reuses the exact same discover_params validation shape as
+ *  validateQuestionAgentOutput (same ALLOWED_DISCOVER_KEYS allowlist) — this
+ *  agent has no target_axis field, since it deliberately targets multiple
+ *  axes' opposite poles at once rather than one axis at a time. */
+function validateRecommendHorizonOutput(raw: string): ValidationResult<RecommendHorizonAgentOutput> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stripCodeFence(raw));
+  } catch {
+    return { ok: false, reason: "not valid JSON" };
+  }
+  if (typeof parsed !== "object" || parsed === null) {
+    return { ok: false, reason: "not a JSON object" };
+  }
+  const obj = parsed as Record<string, unknown>;
+  if (typeof obj.discover_params !== "object" || obj.discover_params === null) {
+    return { ok: false, reason: "missing discover_params" };
+  }
+  const params = obj.discover_params as Record<string, unknown>;
+  for (const key of Object.keys(params)) {
+    if (!ALLOWED_DISCOVER_KEYS.has(key)) {
+      return { ok: false, reason: `disallowed discover_params key: ${key}` };
+    }
+  }
+  return {
+    ok: true,
+    data: {
+      discoverParams: params as DiscoverParams,
+      reasoning: typeof obj.reasoning === "string" ? obj.reasoning : undefined,
+    },
+  };
+}
+
+export async function runRecommendHorizonAgent(
+  input: {
+    axisScores: AxisScores;
+    genreCoverage: Record<string, number>;
+    languageCoverage: Record<string, number>;
+  },
+  env: Env,
+): Promise<RecommendHorizonAgentResult> {
+  const userMessage = JSON.stringify({
+    axis_scores: toSnakeAxisScores(input.axisScores),
+    genre_coverage: input.genreCoverage,
+    language_coverage: input.languageCoverage,
+  });
+
+  const result = await runLlmTask<RecommendHorizonAgentOutput, undefined>({
+    call: async () => {
+      const res = await env.AI.run(RECOMMEND_HORIZON_AGENT_MODEL, {
+        messages: [
+          { role: "system", content: RECOMMENDHORIZON_AGENT_PROMPT },
+          { role: "user", content: userMessage },
+        ],
+        ...STRUCTURED_SAMPLING,
+      });
+      const response = (res as { response: unknown }).response;
+      return typeof response === "string" ? response : JSON.stringify(response);
+    },
+    validate: validateRecommendHorizonOutput,
+    fallback: () => undefined,
+    maxAttempts: 3, // same reasoning as the question-agent above
+  });
+
+  return result.source === "agent"
+    ? { source: "agent", data: result.data }
+    : { source: "fallback" };
 }

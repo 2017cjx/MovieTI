@@ -144,6 +144,13 @@ export interface NextBatchResponse {
    *  response, then periodically). The client persists and echoes it back
    *  as `tasteHypothesis`, same pattern as `plan`. */
   tasteHypothesis?: string;
+  /** The question-agent's own free-text explanation for this batch's pick
+   *  (prompts/question-agent.md's `reasoning` field) — present only when
+   *  source === "agent". Not used by any scoring/selection logic; purely
+   *  for local debugging (console-logged client-side, docs/adr/0006-adjacent
+   *  2026-07-17 addition) so the agent's reasoning is inspectable without a
+   *  separate logging pipeline. */
+  reasoning?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -177,6 +184,92 @@ export interface FlourishResponse {
    *  itself (type_descriptions.json is client-side only) — this is purely
    *  a signal to render the local static template. */
   comment: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/recommend-similar
+//
+// "You might like these movies" (result screen, docs/adr/0006). Called once,
+// after /api/flourish's inputs are available. Two independent endpoints
+// (this one and /api/recommend-horizon below) rather than one combined
+// endpoint, specifically so the frontend can show each list's own loading
+// spinner and let either fail without blocking the other — a single shared
+// endpoint can only respond once both pipelines finish.
+// ---------------------------------------------------------------------------
+
+/** One candidate seed for the TMDb "similar movies" lookup. A deliberately
+ *  thin slice of RatedMovie (no tmdbVoteAverage/originalLanguage — the agent
+ *  doesn't need them to judge representativeness) plus the `tmdbId` RatedMovie
+ *  itself omits (RatedMovie is shaped for LLM prose input, never used to
+ *  make a follow-up API call before now). */
+export interface RecommendSeed {
+  tmdbId: number;
+  title: string;
+  year: number;
+  genres: string[];
+  /** 1-5, the user's own rating. */
+  rating: number;
+}
+
+export interface RecommendSimilarRequest {
+  /** Up to 5 candidates, already narrowed/ordered client-side — deep-dive
+   *  phase (Q21-80) ratings preferred over screening-phase (Q1-20) ones,
+   *  since screening always draws from the same small fallback_pool.json
+   *  and would otherwise make this list converge across sessions
+   *  (CONTEXT.md "スクリーニング（プリセット）由来データの弱体化"). The
+   *  agent picks 1-2 of these; it never sees the person's full history. */
+  candidateSeeds: RecommendSeed[];
+  /** From the hypothesis-agent checkpoint, if deep_dive reached it — helps
+   *  the agent judge which seed best represents overall taste rather than
+   *  just picking the single highest rating. */
+  tasteHypothesis?: string;
+  /** TMDb ids to exclude from results (already-shown quiz movies; the
+   *  backend also excludes candidateSeeds' own ids so a movie can't
+   *  recommend itself back). */
+  shownMovieIds: number[];
+}
+
+export interface RecommendSimilarResponse {
+  status: "ok" | "fallback";
+  /** Null iff status === "fallback" — there is no static fallback content
+   *  for this list (unlike FlourishResponse), so the frontend omits the
+   *  whole section rather than showing a substitute. When present, up to
+   *  ~10 movies (a display slice of 5 plus a backfill buffer the frontend
+   *  draws from if a movie collides with the other recommendation list). */
+  movies: QuestionMovie[] | null;
+  /** The agent's own free-text explanation for which seed(s) it picked
+   *  (prompts/recommend-similar-agent.md's `reasoning` field). Debugging
+   *  aid only, console-logged client-side — see NextBatchResponse.reasoning. */
+  reasoning?: string;
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/recommend-horizon
+//
+// "Movies that could broaden your horizon" (result screen, docs/adr/0006).
+// Called once, concurrently with /api/recommend-similar.
+// ---------------------------------------------------------------------------
+
+export interface RecommendHorizonRequest {
+  axisScores: AxisScores;
+  /** Same shape as functions/api/_lib/agents.ts's tallyGenreCoverage output,
+   *  but computed client-side and weighted the same way as
+   *  RecommendSimilarRequest.candidateSeeds: deep-dive-phase answers
+   *  preferred, screening-phase folded back in only when there isn't
+   *  enough deep-dive data to tally from. */
+  genreCoverage: Record<string, number>;
+  languageCoverage: Record<string, number>;
+  shownMovieIds: number[];
+}
+
+export interface RecommendHorizonResponse {
+  status: "ok" | "fallback";
+  /** Same null/omit-on-failure and display-slice-plus-buffer shape as
+   *  RecommendSimilarResponse.movies. */
+  movies: QuestionMovie[] | null;
+  /** Same debugging-aid purpose as RecommendSimilarResponse.reasoning,
+   *  sourced from prompts/recommend-horizon-agent.md's `reasoning` field. */
+  reasoning?: string;
 }
 
 // ---------------------------------------------------------------------------

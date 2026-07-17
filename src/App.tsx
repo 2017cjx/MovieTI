@@ -40,7 +40,16 @@ function App() {
   }
 
   if (buffer.isComplete) {
-    return <ResultScreen answers={quiz.answers} />;
+    return (
+      <ResultScreen
+        answers={quiz.answers}
+        tasteHypothesis={quiz.tasteHypothesis}
+        cachedRecommendSimilar={quiz.recommendSimilar}
+        cachedRecommendHorizon={quiz.recommendHorizon}
+        onRecommendSimilarResolved={quiz.setRecommendSimilar}
+        onRecommendHorizonResolved={quiz.setRecommendHorizon}
+      />
+    );
   }
 
   if (buffer.error) {

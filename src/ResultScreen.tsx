@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import type { AxisId, FlourishRequest, FlourishResponse, RatedMovie } from "./api-types";
+import type {
+  AxisId,
+  FlourishRequest,
+  FlourishResponse,
+  QuestionMovie,
+  RatedMovie,
+  RecommendHorizonRequest,
+  RecommendSimilarRequest,
+} from "./api-types";
 import { STORAGE_KEY } from "./hooks/useQuizState";
+import { useRecommendations, type RecommendListState } from "./hooks/useRecommendations";
 import { getTypeEntry, renderTypeDescription } from "./lib/typeDescriptions";
+import { pickCoverageTallies, pickRecommendSeeds } from "./lib/recommendations";
 import { computeScores, SCORING_CONSTANTS } from "./scoring";
 import type { Answer } from "./types/answer";
 
@@ -33,6 +43,36 @@ function toRatedMovie(item: { movie: Answer["movie"]; rating: number }): RatedMo
   };
 }
 
+/** One of the two new result-screen lists (docs/adr/0006). `movies` follows
+ *  useRecommendations.ts's tri-state: undefined shows a spinner, null omits
+ *  the section entirely (fetch failed or was skipped for lack of data), an
+ *  array renders the posters. Deliberately no "try again" affordance on
+ *  failure, unlike the flourish text below — these are bonus sections on an
+ *  already-complete result page, not its core content. */
+function RecommendSection({ heading, movies }: { heading: string; movies: RecommendListState }) {
+  if (movies === null) return null;
+  return (
+    <div className="recommend-section">
+      <h2 className="script-heading">{heading}</h2>
+      {movies === undefined ? (
+        <div className="recommend-spinner" role="status" aria-label="Loading recommendations" />
+      ) : (
+        <div className="recommend-row">
+          {movies.map((m) => (
+            <img
+              key={m.tmdbId}
+              className="recommend-poster"
+              src={m.posterPath ? `https://image.tmdb.org/t/p/w185${m.posterPath}` : undefined}
+              alt={m.title}
+              title={m.title}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function topGenreOf(answers: Answer[]): string {
   const counts = new Map<string, number>();
   for (const a of answers) {
@@ -50,7 +90,25 @@ function topGenreOf(answers: Answer[]): string {
   return best;
 }
 
-export function ResultScreen({ answers }: { answers: Answer[] }) {
+interface ResultScreenProps {
+  answers: Answer[];
+  tasteHypothesis?: string;
+  /** Present (including null) iff already fetched in an earlier visit to
+   *  this result — see useRecommendations.ts for the caching contract. */
+  cachedRecommendSimilar?: QuestionMovie[] | null;
+  cachedRecommendHorizon?: QuestionMovie[] | null;
+  onRecommendSimilarResolved: (movies: QuestionMovie[] | null) => void;
+  onRecommendHorizonResolved: (movies: QuestionMovie[] | null) => void;
+}
+
+export function ResultScreen({
+  answers,
+  tasteHypothesis,
+  cachedRecommendSimilar,
+  cachedRecommendHorizon,
+  onRecommendSimilarResolved,
+  onRecommendHorizonResolved,
+}: ResultScreenProps) {
   const result = computeScores(answers, { final: true });
   // Only one body of text is ever shown (2026-07-15 — showing the static
   // template *and* the live flourish stacked together read as redundant).
@@ -105,6 +163,30 @@ export function ResultScreen({ answers }: { answers: Answer[] }) {
   }, [typeCode]);
 
   useEffect(() => fetchFlourish(), [fetchFlourish]);
+
+  // Both requests are built unconditionally (hooks below can't be called
+  // conditionally) — null means "not enough data," which useRecommendations
+  // treats the same as a failed fetch (section stays omitted, no wasted
+  // round-trip). See src/lib/recommendations.ts for why these are weighted
+  // toward deep-dive-phase answers.
+  const shownMovieIds = answers.map((a) => a.movie.tmdbId);
+  const candidateSeeds = pickRecommendSeeds(answers);
+  const { genreCoverage, languageCoverage } = pickCoverageTallies(answers);
+
+  const similarRequest: RecommendSimilarRequest | null =
+    candidateSeeds.length > 0 ? { candidateSeeds, tasteHypothesis, shownMovieIds } : null;
+  const horizonRequest: RecommendHorizonRequest | null = typeCode
+    ? { axisScores: result.axisScores, genreCoverage, languageCoverage, shownMovieIds }
+    : null;
+
+  const { similar: recommendSimilar, horizon: recommendHorizon } = useRecommendations({
+    cachedSimilar: cachedRecommendSimilar,
+    cachedHorizon: cachedRecommendHorizon,
+    similarRequest,
+    horizonRequest,
+    onSimilarResolved: onRecommendSimilarResolved,
+    onHorizonResolved: onRecommendHorizonResolved,
+  });
 
   if (!typeCode || !signature) {
     return (
@@ -176,6 +258,12 @@ export function ResultScreen({ answers }: { answers: Answer[] }) {
           ))}
         </div>
       )}
+
+      <RecommendSection heading="You might like these movies" movies={recommendSimilar} />
+      <RecommendSection
+        heading="Movies that could broaden your horizon"
+        movies={recommendHorizon}
+      />
 
       <h2 className="script-heading">What kind of movies do I like?</h2>
       <p className="result-body">{flourishText ?? rendered.body}</p>

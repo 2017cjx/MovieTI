@@ -18,6 +18,14 @@ interface PersistedState {
   answers: Answer[];
   checkpoint?: CheckpointPlan;
   tasteHypothesis?: string;
+  /** The two result-screen recommendation lists (docs/adr/0006 item 9).
+   *  undefined = not yet fetched, null = fetched but failed (section stays
+   *  omitted on reload too, not re-attempted), array = fetched
+   *  successfully. Piggybacks on this same STORAGE_KEY so a page reload
+   *  shows a stable result instead of re-rolling TMDb's randomized
+   *  candidate selection — see useRecommendations.ts. */
+  recommendSimilar?: QuestionMovie[] | null;
+  recommendHorizon?: QuestionMovie[] | null;
 }
 
 function loadPersisted(): PersistedState {
@@ -29,6 +37,8 @@ function loadPersisted(): PersistedState {
       answers: parsed.answers ?? [],
       checkpoint: parsed.checkpoint,
       tasteHypothesis: parsed.tasteHypothesis,
+      recommendSimilar: parsed.recommendSimilar,
+      recommendHorizon: parsed.recommendHorizon,
     };
   } catch {
     return { answers: [] };
@@ -96,8 +106,28 @@ export function useQuizState() {
     [patch],
   );
 
+  const setRecommendSimilar = useCallback(
+    (recommendSimilar: QuestionMovie[] | null) => {
+      patch((prev) => ({ ...prev, recommendSimilar }));
+    },
+    [patch],
+  );
+
+  const setRecommendHorizon = useCallback(
+    (recommendHorizon: QuestionMovie[] | null) => {
+      patch((prev) => ({ ...prev, recommendHorizon }));
+    },
+    [patch],
+  );
+
   const reset = useCallback(() => {
-    patch(() => ({ answers: [], checkpoint: undefined, tasteHypothesis: undefined }));
+    patch(() => ({
+      answers: [],
+      checkpoint: undefined,
+      tasteHypothesis: undefined,
+      recommendSimilar: undefined,
+      recommendHorizon: undefined,
+    }));
   }, [patch]);
 
   const ratedMoviesSoFar = useMemo(
@@ -114,11 +144,15 @@ export function useQuizState() {
     answers: state.answers,
     checkpoint: state.checkpoint,
     tasteHypothesis: state.tasteHypothesis,
+    recommendSimilar: state.recommendSimilar,
+    recommendHorizon: state.recommendHorizon,
     axisScores: provisional.axisScores,
     ratedMoviesSoFar,
     recordAnswer,
     setCheckpoint,
     setTasteHypothesis,
+    setRecommendSimilar,
+    setRecommendHorizon,
     reset,
   };
 }

@@ -158,6 +158,17 @@ export function useMovieBuffer(options: UseMovieBufferOptions): UseMovieBufferRe
       }
       if (data.checkpoint) onCheckpointRef.current(data.checkpoint);
       if (data.tasteHypothesis) onTasteHypothesisRef.current(data.tasteHypothesis);
+      // Dev/demo visibility into the agents' own guesswork (2026-07-17,
+      // user-requested) — none of this is used by any app logic, it's
+      // purely so the reasoning behind a pick is inspectable in the browser
+      // console rather than only in Cloudflare's server-side logs.
+      if (data.reasoning) console.log("[MovieTI] question-agent reasoning:", data.reasoning);
+      if (data.checkpoint || data.tasteHypothesis) {
+        console.log("[MovieTI] hypothesis-agent checkpoint:", {
+          tasteHypothesis: data.tasteHypothesis,
+          plan: data.checkpoint,
+        });
+      }
       setError(false);
     } catch {
       setError(true);
